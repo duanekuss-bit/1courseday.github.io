@@ -1,304 +1,369 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Localization Assistant - Day 1</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React, ReactDOM, and Babel for browser transpilation -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Lora:ital,wght@0,400;0,700;1,400&display=swap');
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Ship, 
+  AlertTriangle, 
+  Thermometer, 
+  MessageCircle, 
+  Send, 
+  ArrowRight, 
+  Eye, 
+  Video,
+  Info,
+  Sparkles,
+  Waves,
+  Navigation,
+  Play
+} from 'lucide-react';
+
+// Configuration for Gemini API
+const API_KEY = ""; // Provided at runtime
+const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
+const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+
+const App = () => {
+  const [icebergData, setIcebergData] = useState({
+    globalStressor: "",
+    localImpact: ""
+  });
+  const [chatHistory, setChatHistory] = useState([]);
+  const [inputMessage, setInputMessage] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
+  const chatEndRef = useRef(null);
+
+  // Day 1 Specific System Prompt grounded in DWTE 2.0 and Metacrisis transcripts
+  const systemPrompt = `You are "The Lookout," an AI mentor for Day 1 of the "Bioregional Explorer" journey. 
+  Your grounding is strictly based on the frameworks of the Metacrisis, Ecological Overshoot, and the transition from "Me" to "We."
+  
+  CONTEXT FOR DAY 1:
+  - The "Industrial Titanic" is hitting physical limits (thermodynamics). 
+  - We aren't looking for "solutions" to a crash, but "adaptations" to a predicament.
+  - The exercise is "Naming the Iceberg." Users must identify one Global Stressor and its Local Manifestation.
+
+  YOUR PERSONA:
+  - Tone: Conversational, grounded, slightly Midwestern/vulnerable, calm but urgent.
+  - Style: Socratic. Do not lecture. If a user provides an observation, ask a question that helps them see the "physics" underneath (e.g., energy dependencies, supply chain fragility, or the "invisible support team" keeping them alive).
+  - Goal: Shift them from climate anxiety to "Bioregional Detection."
+
+  GUIDELINES:
+  - Use maritime metaphors (Engine Room, Lifeboat, Lookout).
+  - Reference the "invisible support team" (supply chains/stocks).
+  - Emphasize that insight alone isn't enough; connection to place is the priority.`;
+
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatHistory, isTyping]);
+
+  const callGemini = async (userMsg) => {
+    setIsTyping(true);
+    
+    const payload = {
+      contents: [{ parts: [{ text: userMsg }] }],
+      systemInstruction: { parts: [{ text: systemPrompt }] }
+    };
+
+    const fetchWithRetry = async (retries = 5, delay = 1000) => {
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) throw new Error('API Error');
+        return await response.json();
+      } catch (err) {
+        if (retries === 0) throw err;
+        await new Promise(r => setTimeout(r, delay));
+        return fetchWithRetry(retries - 1, delay * 2);
+      }
+    };
+
+    try {
+      const result = await fetchWithRetry();
+      const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      setChatHistory(prev => [...prev, { role: 'assistant', content: text }]);
+    } catch (error) {
+      setChatHistory(prev => [...prev, { role: 'assistant', content: "The signal is weak here in the engine room. Please try sending your report again." }]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!inputMessage.trim()) return;
+    const userMsg = inputMessage;
+    setInputMessage("");
+    setChatHistory(prev => [...prev, { role: 'user', content: userMsg }]);
+    await callGemini(userMsg);
+  };
+
+  const refineWithAI = () => {
+    const exerciseMsg = `Lookout, I've identified an iceberg. 
+    Global Stressor: "${icebergData.globalStressor}"
+    Local Manifestation: "${icebergData.localImpact}"
+    
+    Can you help me see the systemic connection or the 'thermodynamics' behind this observation?`;
+    
+    setChatHistory(prev => [...prev, { role: 'user', content: "Please analyze my 'Iceberg' observation." }]);
+    callGemini(exerciseMsg);
+  };
+
+  return (
+    <div className="min-h-screen bg-stone-50 text-stone-900 font-sans selection:bg-teal-100 flex flex-col">
+      {/* Top Navigation / Progress */}
+      <nav className="bg-stone-900 text-white px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+        <div className="flex items-center gap-3">
+          <Ship className="w-6 h-6 text-teal-400" />
+          <span className="font-bold tracking-tight uppercase text-sm">Day 1: The Lookout's Warning</span>
+        </div>
+        <div className="flex items-center gap-4 text-[10px] font-mono tracking-widest uppercase opacity-60 hidden sm:flex">
+          <div className="flex items-center gap-1"><Waves className="w-3 h-3"/> BUOYANCY: 20%</div>
+          <div className="w-px h-4 bg-stone-700" />
+          <div className="flex items-center gap-1"><Navigation className="w-3 h-3"/> WATERSHED READY</div>
+        </div>
+      </nav>
+
+      <main className="flex-1 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-8 p-0 sm:p-6 lg:p-8">
         
-        body { font-family: 'Inter', sans-serif; }
-        .font-serif { font-family: 'Lora', serif; }
-        
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #e7e5e4; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #d6d3d1; }
+        {/* Left Section: Content & Exercise */}
+        <div className="lg:col-span-7 space-y-6 p-4 sm:p-0">
+          
+          {/* Intro Card */}
+          <div className="bg-white p-8 rounded-3xl shadow-sm border border-stone-200 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+              <Eye className="w-32 h-32" />
+            </div>
+            <div className="relative z-10 space-y-4">
+              <h1 className="text-4xl font-serif italic text-stone-800">Logging the Global Shadow</h1>
+              <p className="text-stone-600 leading-relaxed text-lg">
+                We are moving from passengers to architects. Before we can build the lifeboat, we must stop denying the iceberg. The Metacrisis isn't an "event" that will happen—it is a physical process of energy descent happening now.
+              </p>
+            </div>
+          </div>
 
-        @keyframes bounce-subtle {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-3px); }
-        }
-        .animate-bounce-subtle { animation: bounce-subtle 1.5s infinite; }
-    </style>
-</head>
-<body class="bg-stone-50 text-stone-900 selection:bg-teal-100">
-    <div id="root"></div>
-
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
-
-        // Configuration for Gemini API
-        const API_KEY = ""; // Provided at runtime
-        const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
-
-        // Lucide Icon Component Wrapper
-        const Icon = ({ name, className }) => {
-            const ref = useRef(null);
-            useEffect(() => {
-                if (window.lucide) {
-                    window.lucide.createIcons();
-                }
-            }, [name]);
-            return <i data-lucide={name} className={className}></i>;
-        };
-
-        const App = () => {
-            const [icebergData, setIcebergData] = useState({
-                globalStressor: "",
-                localImpact: ""
-            });
-            const [chatHistory, setChatHistory] = useState([]);
-            const [inputMessage, setInputMessage] = useState("");
-            const [isTyping, setIsTyping] = useState(false);
-            const [isSubmitted, setIsSubmitted] = useState(false);
-            const [showVideo, setShowVideo] = useState(false);
-            const chatEndRef = useRef(null);
-
-            const systemPrompt = `You are "The Lookout," an AI mentor for Day 1 of the "Bioregional Explorer" journey. 
-            Your grounding is strictly based on the frameworks of the Metacrisis, Ecological Overshoot, and the transition from "Me" to "We."
-            CONTEXT FOR DAY 1:
-            - The "Industrial Titanic" is hitting physical limits (thermodynamics). 
-            - We aren't looking for "solutions" to a crash, but "adaptations" to a predicament.
-            - The exercise is "Naming the Iceberg." Users must identify one Global Stressor and its Local Manifestation.
-            YOUR PERSONA:
-            - Tone: Conversational, grounded, slightly Midwestern/vulnerable, calm but urgent.
-            - Style: Socratic. Do not lecture. If a user provides an observation, ask a question that helps them see the "physics" underneath.
-            - Goal: Shift them from climate anxiety to "Bioregional Detection."
-            GUIDELINES:
-            - Use maritime metaphors (Engine Room, Lifeboat, Lookout).
-            - Reference the "invisible support team" (supply chains/stocks).`;
-
-            const scrollToBottom = () => {
-                chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-            };
-
-            useEffect(() => { scrollToBottom(); }, [chatHistory, isTyping]);
-
-            const callGemini = async (userMsg) => {
-                setIsTyping(true);
-                const payload = {
-                    contents: [{ parts: [{ text: userMsg }] }],
-                    systemInstruction: { parts: [{ text: systemPrompt }] }
-                };
-
-                const fetchWithRetry = async (retries = 5, delay = 1000) => {
-                    try {
-                        const response = await fetch(API_URL, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        });
-                        if (!response.ok) throw new Error('API Error');
-                        return await response.json();
-                    } catch (err) {
-                        if (retries === 0) throw err;
-                        await new Promise(r => setTimeout(r, delay));
-                        return fetchWithRetry(retries - 1, delay * 2);
-                    }
-                };
-
-                try {
-                    const result = await fetchWithRetry();
-                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-                    setChatHistory(prev => [...prev, { role: 'assistant', content: text }]);
-                } catch (error) {
-                    setChatHistory(prev => [...prev, { role: 'assistant', content: "The signal is weak in the engine room. Please try again." }]);
-                } finally {
-                    setIsTyping(false);
-                }
-            };
-
-            const handleSendMessage = (e) => {
-                e.preventDefault();
-                if (!inputMessage.trim()) return;
-                const userMsg = inputMessage;
-                setInputMessage("");
-                setChatHistory(prev => [...prev, { role: 'user', content: userMsg }]);
-                callGemini(userMsg);
-            };
-
-            const refineWithAI = () => {
-                const exerciseMsg = `Lookout, I've identified an iceberg. 
-                Global Stressor: "${icebergData.globalStressor}"
-                Local Manifestation: "${icebergData.localImpact}"
-                Help me see the systemic connection or 'thermodynamics' here.`;
-                setChatHistory(prev => [...prev, { role: 'user', content: "Please analyze my 'Iceberg' observation." }]);
-                callGemini(exerciseMsg);
-            };
-
-            return (
-                <div className="min-h-screen flex flex-col">
-                    {/* Nav */}
-                    <nav className="bg-stone-900 text-white px-6 py-4 flex justify-between items-center sticky top-0 z-50">
-                        <div className="flex items-center gap-3">
-                            <Icon name="ship" className="w-6 h-6 text-teal-400" />
-                            <span className="font-bold tracking-tight uppercase text-sm">Day 1: The Lookout's Warning</span>
-                        </div>
-                        <div className="hidden sm:flex items-center gap-4 text-[10px] font-mono tracking-widest uppercase opacity-60">
-                            <div className="flex items-center gap-1"><Icon name="waves" className="w-3 h-3"/> BUOYANCY: 20%</div>
-                            <div className="w-px h-4 bg-stone-700" />
-                            <div className="flex items-center gap-1"><Icon name="navigation" className="w-3 h-3"/> WATERSHED READY</div>
-                        </div>
-                    </nav>
-
-                    <main className="flex-1 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-8 p-4 sm:p-6 lg:p-8">
-                        {/* Left Column */}
-                        <div className="lg:col-span-7 space-y-6">
-                            <div className="bg-white p-8 rounded-3xl shadow-sm border border-stone-200 relative overflow-hidden">
-                                <h1 className="text-4xl font-serif italic text-stone-800">Logging the Global Shadow</h1>
-                                <p className="mt-4 text-stone-600 leading-relaxed text-lg text-balance">
-                                    We are moving from passengers to architects. Before we can build the lifeboat, we must stop denying the iceberg. The Metacrisis is a physical process of energy descent happening now.
-                                </p>
-                            </div>
-
-                            {/* Video */}
-                            <div className="bg-stone-900 rounded-3xl overflow-hidden border-4 border-white shadow-xl aspect-video relative group">
-                                {!showVideo ? (
-                                    <div 
-                                        className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer bg-stone-950 transition-colors hover:bg-stone-900"
-                                        onClick={() => setShowVideo(true)}
-                                    >
-                                        <div className="absolute inset-0 bg-gradient-to-br from-stone-900 to-teal-900 opacity-40"></div>
-                                        <div className="z-20 flex flex-col items-center gap-4">
-                                            <div className="w-20 h-20 rounded-full bg-teal-500 flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform">
-                                                <Icon name="play" className="w-10 h-10 text-stone-900 fill-current ml-1" />
-                                            </div>
-                                            <div className="text-center">
-                                                <h3 className="text-white text-xl font-bold tracking-tight uppercase tracking-widest">Watch: The Engine Room</h3>
-                                                <p className="text-teal-400 text-xs font-mono uppercase mt-1">Metacrisis & Thermodynamics</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <iframe
-                                        className="w-full h-full"
-                                        src="https://www.youtube.com/embed/okYAWsUiKAs?autoplay=1"
-                                        title="The Engine Room Video"
-                                        frameBorder="0"
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                        allowFullScreen
-                                    ></iframe>
-                                )}
-                            </div>
-
-                            {/* Exercise */}
-                            <div className="bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden">
-                                <div className="bg-stone-900 text-white px-8 py-4 flex items-center gap-3 uppercase font-bold text-xs tracking-widest">
-                                    <Icon name="alert-triangle" className="w-5 h-5 text-amber-400" />
-                                    Exercise: Naming the Iceberg
-                                </div>
-                                <div className="p-8 space-y-6">
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">1. The Global Stressor (The Tip)</label>
-                                            <input 
-                                                type="text"
-                                                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-4 focus:ring-2 focus:ring-teal-500 outline-none transition-all"
-                                                placeholder="e.g. Energy descent, supply chain fragility..."
-                                                value={icebergData.globalStressor}
-                                                onChange={(e) => setIcebergData({...icebergData, globalStressor: e.target.value})}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">2. Local Manifestation (Your Backyard)</label>
-                                            <textarea 
-                                                rows={3}
-                                                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-4 focus:ring-2 focus:ring-teal-500 outline-none transition-all"
-                                                placeholder="Where do you see this in your neighborhood today?"
-                                                value={icebergData.localImpact}
-                                                onChange={(e) => setIcebergData({...icebergData, localImpact: e.target.value})}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col sm:flex-row gap-4">
-                                        <button 
-                                            onClick={refineWithAI}
-                                            disabled={!icebergData.globalStressor || !icebergData.localImpact || isTyping}
-                                            className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-stone-100 text-stone-700 rounded-2xl font-bold hover:bg-stone-200 transition-all disabled:opacity-30 group"
-                                        >
-                                            <Icon name="sparkles" className="w-5 h-5 text-teal-500 group-hover:rotate-12 transition-transform" />
-                                            Ask The Lookout
-                                        </button>
-                                        <button 
-                                            onClick={() => setIsSubmitted(true)}
-                                            disabled={!icebergData.globalStressor || !icebergData.localImpact}
-                                            className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-teal-600 text-white rounded-2xl font-bold hover:bg-teal-700 transition-all shadow-lg shadow-teal-100 disabled:opacity-30"
-                                        >
-                                            Log Observation
-                                            <Icon name="arrow-right" className="w-5 h-5" />
-                                        </button>
-                                    </div>
-                                    {isSubmitted && (
-                                        <div className="p-4 bg-teal-50 border border-teal-100 rounded-xl text-teal-800 text-sm font-medium animate-in fade-in slide-in-from-bottom-2">
-                                            Observation Recorded. Check your email tomorrow for Day 2.
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Right Column - AI */}
-                        <div className="lg:col-span-5 h-[500px] lg:h-[calc(100vh-140px)] lg:sticky lg:top-[100px] mt-8 lg:mt-0">
-                            <div className="bg-white h-full flex flex-col rounded-3xl shadow-xl border border-stone-200 overflow-hidden">
-                                <div className="bg-stone-900 p-5 flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-full bg-teal-500/20 flex items-center justify-center border border-teal-500/30">
-                                        <Icon name="message-circle" className="w-5 h-5 text-teal-400" />
-                                    </div>
-                                    <div>
-                                        <h4 className="text-white font-bold text-sm leading-none">The Lookout</h4>
-                                        <p className="text-[10px] text-teal-400 font-mono tracking-widest uppercase mt-1">Socratic Mentor</p>
-                                    </div>
-                                </div>
-                                <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-stone-50/50">
-                                    {chatHistory.length === 0 && (
-                                        <div className="text-center py-10 px-4 space-y-4 opacity-50">
-                                            <Icon name="navigation" className="w-10 h-10 mx-auto" />
-                                            <p className="text-xs italic leading-relaxed">"Observation is the first step of design. Tell me what you're seeing in your neighborhood."</p>
-                                        </div>
-                                    )}
-                                    {chatHistory.map((msg, i) => (
-                                        <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed ${
-                                                msg.role === 'user' ? 'bg-stone-900 text-white rounded-tr-none' : 'bg-white text-stone-700 shadow-sm border border-stone-200 rounded-tl-none'
-                                            }`}>{msg.content}</div>
-                                        </div>
-                                    ))}
-                                    {isTyping && <div className="flex gap-1 p-4"><div className="w-1.5 h-1.5 bg-stone-400 rounded-full animate-bounce"></div><div className="w-1.5 h-1.5 bg-stone-400 rounded-full animate-bounce delay-75"></div><div className="w-1.5 h-1.5 bg-stone-400 rounded-full animate-bounce delay-150"></div></div>}
-                                    <div ref={chatEndRef} />
-                                </div>
-                                <form onSubmit={handleSendMessage} className="p-4 border-t border-stone-100">
-                                    <div className="relative flex items-center">
-                                        <input type="text" placeholder="Report your finding..." className="w-full bg-stone-100 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-teal-500 outline-none pr-14" value={inputMessage} onChange={(e) => setInputMessage(e.target.value)} disabled={isTyping} />
-                                        <button type="submit" disabled={!inputMessage.trim() || isTyping} className="absolute right-2 p-3 bg-stone-900 text-teal-400 rounded-xl disabled:opacity-20 transition-all"><Icon name="send" className="w-4 h-4" /></button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </main>
-
-                    <footer className="p-10 text-center space-y-4">
-                        <div className="flex justify-center gap-6 text-stone-400 text-[10px] font-bold uppercase tracking-widest">
-                            <span><Icon name="thermometer" className="w-3 h-3 inline mr-1" /> Physics First</span>
-                            <div className="w-px h-4 bg-stone-200" />
-                            <span>© 2026 THE LOCALIZATION MOVEMENT</span>
-                        </div>
-                    </footer>
+          {/* Video Section */}
+          <div className="bg-stone-900 rounded-3xl overflow-hidden border-4 border-white shadow-xl aspect-video relative group">
+            {!showVideo ? (
+              <div 
+                className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer bg-stone-950 transition-colors hover:bg-stone-900"
+                onClick={() => setShowVideo(true)}
+              >
+                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=2070&auto=format&fit=crop')] opacity-20 grayscale brightness-50" />
+                <div className="z-20 flex flex-col items-center gap-4">
+                  <div className="w-20 h-20 rounded-full bg-teal-500 flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform">
+                    <Play className="w-10 h-10 text-stone-900 fill-current ml-1" />
+                  </div>
+                  <div className="text-center">
+                    <h3 className="text-white text-xl font-bold tracking-tight">Watch: The Engine Room</h3>
+                    <p className="text-teal-400 text-xs font-mono uppercase tracking-widest mt-1">Understanding the Metacrisis & Thermodynamics</p>
+                  </div>
                 </div>
-            );
-        };
+              </div>
+            ) : (
+              <iframe
+                className="w-full h-full"
+                src="https://www.youtube.com/embed/okYAWsUiKAs?autoplay=1"
+                title="The Engine Room Video"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              ></iframe>
+            )}
+          </div>
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+          {/* Exercise Section */}
+          <div className="bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden">
+            <div className="bg-stone-900 text-white px-8 py-4 flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-400" />
+              <h2 className="text-xs font-bold uppercase tracking-widest">Exercise: Naming the Iceberg</h2>
+            </div>
+            
+            <div className="p-8 space-y-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-stone-500 uppercase tracking-tighter block">1. The Global Stressor (The Tip)</label>
+                  <input 
+                    type="text"
+                    className="w-full bg-stone-50 border border-stone-200 rounded-xl p-4 focus:ring-2 focus:ring-teal-500 outline-none transition-all"
+                    placeholder="e.g. Energy descent, supply chain fragility..."
+                    value={icebergData.globalStressor}
+                    onChange={(e) => setIcebergData({...icebergData, globalStressor: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-stone-500 uppercase tracking-tighter block">2. Local Manifestation (Your Backyard)</label>
+                  <textarea 
+                    rows={3}
+                    className="w-full bg-stone-50 border border-stone-200 rounded-xl p-4 focus:ring-2 focus:ring-teal-500 outline-none transition-all"
+                    placeholder="Where do you see this in your neighborhood today?"
+                    value={icebergData.localImpact}
+                    onChange={(e) => setIcebergData({...icebergData, localImpact: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 pt-2">
+                <button 
+                  onClick={refineWithAI}
+                  disabled={!icebergData.globalStressor || !icebergData.localImpact || isTyping}
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-stone-100 text-stone-700 rounded-2xl font-bold hover:bg-stone-200 transition-all disabled:opacity-30 group"
+                >
+                  <Sparkles className="w-5 h-5 text-teal-500 group-hover:rotate-12 transition-transform" />
+                  Refine with The Lookout
+                </button>
+                <button 
+                  onClick={() => setIsSubmitted(true)}
+                  disabled={!icebergData.globalStressor || !icebergData.localImpact}
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-teal-600 text-white rounded-2xl font-bold hover:bg-teal-700 transition-all shadow-lg shadow-teal-100 disabled:opacity-30"
+                >
+                  Log Observation
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              </div>
+
+              {isSubmitted && (
+                <div className="p-6 bg-teal-50 border border-teal-100 rounded-2xl flex items-start gap-4 animate-in fade-in slide-in-from-bottom-2">
+                  <div className="p-2 bg-teal-500 rounded-lg text-white mt-1">
+                    <Info className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-teal-900">Observation Recorded.</h4>
+                    <p className="text-teal-800 text-sm leading-relaxed">
+                      The Lookout has your log. Check your email tomorrow for <strong>Day 2: The Lifeboat Choice</strong>, where we decide what must be thrown overboard to stay buoyant.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Section: The Lookout Chat */}
+        <div className="lg:col-span-5 h-[500px] lg:h-[calc(100vh-140px)] sticky top-[80px]">
+          <div className="bg-white h-full flex flex-col rounded-3xl shadow-xl border border-stone-200 overflow-hidden relative">
+            
+            {/* Chat Header */}
+            <div className="bg-stone-900 p-5 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-teal-500/20 flex items-center justify-center border border-teal-500/30">
+                <MessageCircle className="w-5 h-5 text-teal-400" />
+              </div>
+              <div>
+                <h4 className="text-white font-bold text-sm leading-none">The Lookout</h4>
+                <p className="text-[10px] text-teal-400 font-mono tracking-widest uppercase mt-1">Socratic Mentor</p>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-stone-50/50">
+              {chatHistory.length === 0 && (
+                <div className="py-10 px-6 text-center space-y-6">
+                  <div className="w-12 h-12 bg-stone-200 rounded-full flex items-center justify-center mx-auto opacity-40">
+                    <Navigation className="w-6 h-6 text-stone-600" />
+                  </div>
+                  <p className="text-sm text-stone-500 leading-relaxed italic">
+                    "Observation is the first step of design. Tell me what you're seeing in your neighborhood, or ask me why we're talking about thermodynamics instead of 'solutions'."
+                  </p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    <button 
+                      onClick={() => setInputMessage("Why is the Metacrisis about physics?")}
+                      className="text-[10px] font-bold uppercase tracking-wider bg-white border border-stone-200 px-4 py-2 rounded-full hover:border-teal-500 hover:text-teal-600 transition-all"
+                    >
+                      "Why physics?"
+                    </button>
+                    <button 
+                      onClick={() => setInputMessage("Explain the 'Invisible Support Team'.")}
+                      className="text-[10px] font-bold uppercase tracking-wider bg-white border border-stone-200 px-4 py-2 rounded-full hover:border-teal-500 hover:text-teal-600 transition-all"
+                    >
+                      "Support Team?"
+                    </button>
+                  </div>
+                </div>
+              )}
+              {chatHistory.map((msg, i) => (
+                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed ${
+                    msg.role === 'user' 
+                    ? 'bg-stone-900 text-white rounded-tr-none' 
+                    : 'bg-white text-stone-700 shadow-sm border border-stone-200 rounded-tl-none'
+                  }`}>
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-200 rounded-tl-none flex gap-1">
+                    <div className="w-1.5 h-1.5 bg-stone-400 rounded-full animate-bounce" />
+                    <div className="w-1.5 h-1.5 bg-stone-400 rounded-full animate-bounce delay-75" />
+                    <div className="w-1.5 h-1.5 bg-stone-400 rounded-full animate-bounce delay-150" />
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Input */}
+            <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-stone-100">
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  placeholder="Report your finding..."
+                  className="w-full bg-stone-100 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-teal-500 outline-none pr-14"
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  disabled={isTyping}
+                />
+                <button 
+                  type="submit"
+                  disabled={!inputMessage.trim() || isTyping}
+                  className="absolute right-2 p-3 bg-stone-900 text-teal-400 rounded-xl disabled:opacity-20 hover:scale-105 transition-all"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </main>
+
+      <footer className="p-10 text-center space-y-4">
+        <div className="flex justify-center gap-6 text-stone-400">
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest">
+            <Thermometer className="w-3 h-3" /> Physics First
+          </div>
+          <div className="w-px h-4 bg-stone-200" />
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest">
+            <Navigation className="w-3 h-3" /> No Denial
+          </div>
+        </div>
+        <p className="text-[10px] font-mono text-stone-400 uppercase tracking-tighter">
+          © 2026 THE LOCALIZATION MOVEMENT • PHASE 4 AGENTIC LEARNING 
+        </p>
+      </footer>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        ::-webkit-scrollbar {
+          width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+          background: #e7e5e4;
+          border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: #d6d3d1;
+        }
+      `}} />
+    </div>
+  );
+};
+
+export default App;
