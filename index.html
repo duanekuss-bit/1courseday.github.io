@@ -52,7 +52,9 @@
             console.error("Firebase initialization failed:", err);
         }
 
-        const API_KEY = ""; // Provided at runtime
+        // --- 3. AI MENTOR CONFIGURATION ---
+        // PASTE YOUR GEMINI API KEY BELOW FOR "THE LOOKOUT" TO RESPOND
+        const API_KEY = ""; 
         const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
 
@@ -64,6 +66,7 @@
             const [isTyping, setIsTyping] = useState(false);
             const [visionIdx, setVisionIdx] = useState(0);
             const [saveStatus, setSaveStatus] = useState("");
+            const [connError, setConnError] = useState("");
             
             // Shared Data State
             const [logData, setLogData] = useState({
@@ -91,8 +94,12 @@
                 const unsubscribe = auth.onAuthStateChanged((u) => {
                     if (u) {
                         setUser(u);
+                        setConnError("");
                     } else {
-                        auth.signInAnonymously().catch(e => console.error("Auth error", e));
+                        auth.signInAnonymously().catch(e => {
+                            console.error("Auth error", e);
+                            setConnError("Check: Enable 'Anonymous' in Firebase Auth tab.");
+                        });
                     }
                 });
                 return () => unsubscribe();
@@ -109,11 +116,13 @@
                         setLogData(prev => ({ 
                             ...prev, 
                             ...data,
-                            // Ensure nested objects exist to prevent errors
                             challenges: data.challenges || prev.challenges,
                             iceberg: data.iceberg || prev.iceberg
                         }));
                     }
+                }, (err) => {
+                    console.error("Firestore Listen Error:", err);
+                    setConnError("Check: Create Firestore Database & set Rules to Test Mode.");
                 });
                 return () => unsubscribe();
             }, [user]);
@@ -126,6 +135,7 @@
                     setSaveStatus("Synced");
                     setTimeout(() => setSaveStatus(""), 2000);
                 } catch (e) {
+                    console.error("Save Error:", e);
                     setSaveStatus("Error");
                 }
             };
@@ -142,6 +152,10 @@
             }, []);
 
             const callGemini = async (userMsg) => {
+                if (!API_KEY) {
+                    setChatHistory(prev => [...prev, { role: 'assistant', content: "Lookout offline. Paste your Gemini API key in the index.html file to enable mentor logic." }]);
+                    return;
+                }
                 setIsTyping(true);
                 const systemPrompt = "You are 'The Lookout,' an AI mentor from Duane Kuss's 'The Lifeboat Blueprint.' Be grounded, urgent, and use maritime/mechanical metaphors. Help the user bridge 'Me' to 'We'.";
                 const payload = {
@@ -159,7 +173,7 @@
                     const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
                     setChatHistory(prev => [...prev, { role: 'assistant', content: text }]);
                 } catch (error) {
-                    setChatHistory(prev => [...prev, { role: 'assistant', content: "Signal interference. Please check your connection to the Bridge." }]);
+                    setChatHistory(prev => [...prev, { role: 'assistant', content: "Signal interference. Please check your Gemini API key." }]);
                 } finally {
                     setIsTyping(false);
                 }
@@ -223,6 +237,7 @@
                                             {chatHistory.length === 0 && (
                                                 <div className="text-center py-20 opacity-40">
                                                     <p className="text-sm italic">"The ice is close. What's your report from the local watershed?"</p>
+                                                    {!API_KEY && <p className="mt-4 text-xs text-amber-500">Note: API Key missing in code. AI Mentor is offline.</p>}
                                                 </div>
                                             )}
                                             {chatHistory.map((m, i) => (
@@ -363,7 +378,20 @@
                             </div>
                         </div>
                         
-                        <footer className="mt-12 text-center text-slate-600 text-[10px] font-mono uppercase tracking-[0.2em] py-8 border-t border-slate-900">
+                        {/* CONNECTION DIAGNOSTIC GAUGE */}
+                        <div className="mt-8 p-4 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className={`w-3 h-3 rounded-full ${connError ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}></div>
+                                <span className="text-[10px] font-mono uppercase tracking-widest">
+                                    {connError ? "Connection Break: " + connError : "Filing Cabinet: Online & Connected"}
+                                </span>
+                            </div>
+                            <div className="text-[8px] text-slate-700 font-mono">
+                                CREW_ID: {user ? user.uid : "PENDING..."}
+                            </div>
+                        </div>
+
+                        <footer className="mt-8 text-center text-slate-600 text-[10px] font-mono uppercase tracking-[0.2em] py-8">
                             <p>© 2026 Lifeboat Blueprint | Cold Spring, MN | The shop is open.</p>
                         </footer>
                     </div>
