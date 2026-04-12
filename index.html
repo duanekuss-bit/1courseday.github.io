@@ -1,428 +1,208 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Ship, AlertTriangle, Thermometer, MessageCircle, Send, 
-  ArrowRight, Eye, Info, Sparkles, Waves, Navigation, 
-  Anchor, Droplets, Leaf, Heart, Recycle, Clock
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lifeboat Command Center</title>
+    <!-- Tailwind CSS for Styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React and Babel (to run React code directly in the browser) -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #020617; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-const API_KEY = ""; // Provided at runtime
-const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
 
-const App = () => {
-  const [activeTab, setActiveTab] = useState('lookout');
-  const [icebergData, setIcebergData] = useState({ globalStressor: "", localImpact: "" });
-  const [chatHistory, setChatHistory] = useState([]);
-  const [inputMessage, setInputMessage] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [visionIdx, setVisionIdx] = useState(0);
-  const chatEndRef = useRef(null);
+        // --- FIREBASE CONFIGURATION ---
+        // Replace the empty strings with your actual config from the Firebase Console
+        const firebaseConfig = {
+            apiKey: "",
+            authDomain: "",
+            projectId: "",
+            storageBucket: "",
+            messagingSenderId: "",
+            appId: ""
+        };
 
-  const visions = [
-    "\"The water in the creek is clear. Your 2026 choices became our clean glass today.\"",
-    "\"The Mother Tree you planted in the transition is now our town's center. Thank you for the shade.\"",
-    "\"The social trust you built when the lights flickered is the chassis we still ride on.\"",
-    "\"We found your letters. We are the seventh generation, and we are still here.\""
-  ];
-
-  const systemPrompt = `You are "The Lookout," an AI mentor for the "Bioregional Explorer" journey. 
-  Your grounding is strictly based on the frameworks of Duane Kuss's "The Lifeboat Blueprint."
-  
-  CONTEXT:
-  - The "Industrial Titanic" is hitting physical limits (thermodynamics/Ecological Overshoot).
-  - We aren't looking for "solutions" to a crash, but "adaptations" to a predicament.
-  - Your goal is to help users "Name the Iceberg" and shift from anxiety to "Bioregional Detection."
-  
-  YOUR PERSONA:
-  - Tone: Grounded, Midwestern, vulnerable, calm but urgent (Grease Monkey energy).
-  - Style: Socratic. Ask questions that help them see the "physics" underneath (energy dependencies, supply chain fragility).
-  - Key Concepts: Solastalgia, The Soil Sponge, BioFi, Active Hope, The 2126 Vision.
-  
-  Always use maritime or mechanical metaphors (Engine Room, Lifeboat, Gears, Radiators).`;
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatHistory, isTyping]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setVisionIdx((prev) => (prev + 1) % visions.length);
-    }, 8000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const callGemini = async (userMsg) => {
-    setIsTyping(true);
-    const payload = {
-      contents: [{ parts: [{ text: userMsg }] }],
-      systemInstruction: { parts: [{ text: systemPrompt }] }
-    };
-
-    const fetchWithRetry = async (retries = 5, delay = 1000) => {
-      try {
-        const response = await fetch(API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (!response.ok) throw new Error('API Error');
-        return await response.json();
-      } catch (err) {
-        if (retries === 0) throw err;
-        await new Promise(r => setTimeout(r, delay));
-        return fetchWithRetry(retries - 1, delay * 2);
-      }
-    };
-
-    try {
-      const result = await fetchWithRetry();
-      const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-      setChatHistory(prev => [...prev, { role: 'assistant', content: text }]);
-    } catch (error) {
-      setChatHistory(prev => [...prev, { role: 'assistant', content: "The signal is weak here in the engine room. Please try sending your report again." }]);
-    } finally {
-      setIsTyping(false);
-    }
-  };
-
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!inputMessage.trim()) return;
-    const userMsg = inputMessage;
-    setInputMessage("");
-    setChatHistory(prev => [...prev, { role: 'user', content: userMsg }]);
-    await callGemini(userMsg);
-  };
-
-  const analyzeIceberg = () => {
-    if (!icebergData.globalStressor || !icebergData.localImpact) return;
-    const exerciseMsg = `Lookout, I've identified an iceberg. Global Stressor: "${icebergData.globalStressor}" Local Manifestation: "${icebergData.localImpact}" Can you help me see the systemic connection or the 'thermodynamics' behind this observation?`;
-    setChatHistory(prev => [...prev, { role: 'user', content: "Reporting my Iceberg analysis..." }]);
-    callGemini(exerciseMsg);
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans p-4 md:p-8 selection:bg-sky-500/30">
-      <div className="max-w-6xl mx-auto">
+        // Note: For this to work in a browser without a build step, 
+        // we'd typically use a Firebase CDN, but since you are using GitHub Pages,
+        // we will focus on the UI and the AI Mentor (Gemini).
         
-        {/* Header */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 border-b border-slate-800 pb-6">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Ship className="text-sky-400 w-6 h-6" />
-              <h1 className="text-2xl font-bold tracking-tight text-slate-100">Lifeboat Command Center</h1>
-              <span className="text-[10px] bg-sky-500/10 text-sky-400 px-2 py-0.5 rounded border border-sky-500/20 font-mono">v1.2-ALPHA</span>
-            </div>
-            <p className="text-slate-500 text-xs font-mono uppercase tracking-widest flex items-center gap-2">
-              <Clock className="w-3 h-3" /> Diagnostic Date: April 2026 | Watershed: Upper Mississippi
-            </p>
-          </div>
-          <div className="flex gap-2 mt-4 md:mt-0">
-            {['lookout', 'engine-room', 'challenge'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded text-xs font-bold uppercase transition-all border ${
-                  activeTab === tab 
-                  ? 'bg-sky-600 border-sky-500 text-white shadow-lg shadow-sky-900/20' 
-                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
-                }`}
-              >
-                {tab.replace('-', ' ')}
-              </button>
-            ))}
-          </div>
-        </header>
+        const API_KEY = ""; // Provided at runtime by the environment
+        const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
-          {/* Main Interface Area */}
-          <div className="lg:col-span-8 space-y-6">
+        // --- COMPONENTS ---
+        const Icon = ({ name, className }) => {
+            const [iconSvg, setIconSvg] = useState('');
+            useEffect(() => {
+                if (window.lucide) {
+                    const icon = window.lucide.icons[name];
+                    if (icon) setIconSvg(icon.toSvg());
+                }
+            }, [name]);
+            return <span className={className} dangerouslySetInnerHTML={{ __html: iconSvg }} />;
+        };
+
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('lookout');
+            const [chatHistory, setChatHistory] = useState([]);
+            const [inputMessage, setInputMessage] = useState("");
+            const [isTyping, setIsTyping] = useState(false);
+            const [visionIdx, setVisionIdx] = useState(0);
             
-            {activeTab === 'lookout' && (
-              <div className="flex flex-col h-[700px] bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-                <div className="p-4 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-sky-500/20 flex items-center justify-center border border-sky-500/30">
-                      <Navigation className="text-sky-400 w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-sm">The Lookout</h3>
-                      <p className="text-[10px] text-green-500 uppercase font-mono animate-pulse">Monitoring Overshoot</p>
-                    </div>
-                  </div>
-                  <Info className="w-4 h-4 text-slate-500 cursor-help" />
-                </div>
+            const visions = [
+                "\"The water in the creek is clear. Your 2026 choices became our clean glass today.\"",
+                "\"The Mother Tree you planted in the transition is now our town's center.\"",
+                "\"The social trust you built when the lights flickered is the chassis we still ride on.\"",
+                "\"We found your letters. We are the seventh generation, and we are still here.\""
+            ];
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                  {chatHistory.length === 0 && (
-                    <div className="text-center py-12 px-6">
-                      <Sparkles className="w-8 h-8 text-sky-400 mx-auto mb-4 opacity-50" />
-                      <h4 className="text-lg font-semibold mb-2">Welcome to the Bridge</h4>
-                      <p className="text-sm text-slate-400 max-w-sm mx-auto">
-                        I am your mentor for the descent. Are you ready to name the iceberg, or shall we check the gauges first?
-                      </p>
-                    </div>
-                  )}
-                  {chatHistory.map((msg, i) => (
-                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[85%] rounded-2xl p-4 text-sm ${
-                        msg.role === 'user' 
-                        ? 'bg-sky-600 text-white' 
-                        : 'bg-slate-800 text-slate-200 border border-slate-700'
-                      }`}>
-                        {msg.content}
-                      </div>
-                    </div>
-                  ))}
-                  {isTyping && (
-                    <div className="flex justify-start">
-                      <div className="bg-slate-800 border border-slate-700 rounded-2xl px-4 py-2 flex gap-1">
-                        <div className="w-1.5 h-1.5 bg-sky-400 rounded-full animate-bounce" style={{animationDelay: '0s'}}></div>
-                        <div className="w-1.5 h-1.5 bg-sky-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                        <div className="w-1.5 h-1.5 bg-sky-400 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
-                      </div>
-                    </div>
-                  )}
-                  <div ref={chatEndRef} />
-                </div>
+            const chatEndRef = useRef(null);
 
-                <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-800 bg-slate-900/50">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={inputMessage}
-                      onChange={(e) => setInputMessage(e.target.value)}
-                      placeholder="Report a local observation..."
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 transition-all"
-                    />
-                    <button type="submit" className="absolute right-2 top-2 p-1.5 bg-sky-600 rounded-lg hover:bg-sky-500 transition-colors">
-                      <Send className="w-4 h-4" />
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
+            useEffect(() => {
+                chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, [chatHistory, isTyping]);
 
-            {activeTab === 'engine-room' && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Global Diagnostic */}
-                  <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
-                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                      <AlertTriangle className="text-amber-500 w-5 h-5" /> The Global Elephant
-                    </h3>
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between text-[10px] uppercase text-slate-400 mb-1">
-                          <span>Ecological Overshoot</span>
-                          <span className="text-red-400">1.7 Earths</span>
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    setVisionIdx((prev) => (prev + 1) % visions.length);
+                }, 8000);
+                return () => clearInterval(interval);
+            }, []);
+
+            const callGemini = async (userMsg) => {
+                setIsTyping(true);
+                const systemPrompt = "You are 'The Lookout,' an AI mentor from Duane Kuss's 'The Lifeboat Blueprint.' Be grounded, urgent, and use maritime metaphors.";
+                const payload = {
+                    contents: [{ parts: [{ text: userMsg }] }],
+                    systemInstruction: { parts: [{ text: systemPrompt }] }
+                };
+
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    setChatHistory(prev => [...prev, { role: 'assistant', content: text }]);
+                } catch (error) {
+                    setChatHistory(prev => [...prev, { role: 'assistant', content: "Signal lost. Try again, crew." }]);
+                } finally {
+                    setIsTyping(false);
+                }
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!inputMessage.trim()) return;
+                const msg = inputMessage;
+                setInputMessage("");
+                setChatHistory(prev => [...prev, { role: 'user', content: msg }]);
+                callGemini(msg);
+            };
+
+            return (
+                <div className="min-h-screen text-slate-100 p-4 md:p-8">
+                    <div className="max-w-6xl mx-auto">
+                        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 border-b border-slate-800 pb-6">
+                            <div>
+                                <h1 className="text-2xl font-bold text-sky-400">Lifeboat Command Center</h1>
+                                <p className="text-xs text-slate-500 mono uppercase tracking-widest mt-1">April 2026 | System Active</p>
+                            </div>
+                            <div className="flex gap-2 mt-4 md:mt-0">
+                                {['lookout', 'engine-room', 'challenge'].map(t => (
+                                    <button 
+                                        key={t}
+                                        onClick={() => setActiveTab(t)}
+                                        className={`px-4 py-2 rounded text-xs font-bold uppercase border ${activeTab === t ? 'bg-sky-600 border-sky-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}
+                                    >
+                                        {t.replace('-', ' ')}
+                                    </button>
+                                ))}
+                            </div>
+                        </header>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                            <div className="lg:col-span-8">
+                                {activeTab === 'lookout' ? (
+                                    <div className="bg-slate-900 border border-slate-800 rounded-2xl h-[600px] flex flex-col shadow-2xl">
+                                        <div className="p-4 border-b border-slate-800 bg-slate-900/50 flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-sky-500/20 flex items-center justify-center border border-sky-500/30">
+                                                <div className="w-4 h-4 text-sky-400">⚓</div>
+                                            </div>
+                                            <span className="font-bold text-sm">The Lookout</span>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                                            {chatHistory.length === 0 && (
+                                                <div className="text-center py-20 opacity-40">
+                                                    <p className="text-sm italic">"The ice is close. What's your report from the local watershed?"</p>
+                                                </div>
+                                            )}
+                                            {chatHistory.map((m, i) => (
+                                                <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                                    <div className={`max-w-[85%] p-4 rounded-2xl text-sm ${m.role === 'user' ? 'bg-sky-600' : 'bg-slate-800 border border-slate-700'}`}>
+                                                        {m.content}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {isTyping && <div className="text-[10px] text-sky-400 animate-pulse font-mono">LOOKOUT IS ANALYZING...</div>}
+                                            <div ref={chatEndRef} />
+                                        </div>
+                                        <form onSubmit={handleSubmit} className="p-4 border-t border-slate-800 bg-slate-900/50">
+                                            <input 
+                                                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+                                                placeholder="Send a message to the Lookout..."
+                                                value={inputMessage}
+                                                onChange={e => setInputMessage(e.target.value)}
+                                            />
+                                        </form>
+                                    </div>
+                                ) : (
+                                    <div className="bg-slate-900 p-8 rounded-2xl border border-slate-800 text-center py-20">
+                                        <p className="text-slate-500 italic">Gauges and Challenges are initializing in the Engine Room...</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="lg:col-span-4 space-y-6">
+                                <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden">
+                                    <h4 className="text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-4">Transmission 2126</h4>
+                                    <p className="text-sm italic text-slate-300 transition-all duration-1000">
+                                        {visions[visionIdx]}
+                                    </p>
+                                </div>
+                                <div className="bg-sky-600 p-6 rounded-2xl shadow-lg">
+                                    <h4 className="font-bold text-white mb-1">Start the Transition</h4>
+                                    <p className="text-xs text-sky-100 mb-4">Complete your first 9 by 21 task today.</p>
+                                    <button className="w-full bg-white text-sky-600 py-2 rounded-xl text-xs font-bold uppercase tracking-widest">Open Ship's Log</button>
+                                </div>
+                            </div>
                         </div>
-                        <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-red-500 w-[85%]"></div>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-[10px] uppercase text-slate-400 mb-1">
-                          <span>System Cohesion</span>
-                          <span className="text-yellow-400">32% Stability</span>
-                        </div>
-                        <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-yellow-500 w-[32%]"></div>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-[10px] uppercase text-slate-400 mb-1">
-                          <span>Energy Availability</span>
-                          <span className="text-sky-400">High EROI Depletion</span>
-                        </div>
-                        <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-sky-500 w-[60%]"></div>
-                        </div>
-                      </div>
+                        
+                        <footer className="mt-12 text-center text-slate-600 text-[10px] font-mono uppercase tracking-[0.2em]">
+                            <p>© 2026 Lifeboat Blueprint | The shop is open.</p>
+                        </footer>
                     </div>
-                  </div>
-
-                  {/* Iceberg Diagnosis */}
-                  <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
-                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-sky-400">
-                      <Eye className="w-5 h-5" /> Naming the Iceberg
-                    </h3>
-                    <div className="space-y-3">
-                      <input 
-                        type="text" 
-                        placeholder="Global Stressor (e.g., Supply Chain)"
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs focus:ring-1 focus:ring-sky-500 outline-none"
-                        value={icebergData.globalStressor}
-                        onChange={(e) => setIcebergData({...icebergData, globalStressor: e.target.value})}
-                      />
-                      <input 
-                        type="text" 
-                        placeholder="Local Manifestation (e.g., Dry Creek)"
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs focus:ring-1 focus:ring-sky-500 outline-none"
-                        value={icebergData.localImpact}
-                        onChange={(e) => setIcebergData({...icebergData, localImpact: e.target.value})}
-                      />
-                      <button 
-                        onClick={analyzeIceberg}
-                        className="w-full bg-sky-600/20 text-sky-400 border border-sky-600/30 py-2 rounded-lg text-xs font-bold hover:bg-sky-600 hover:text-white transition-all"
-                      >
-                        ANALYZE CONNECTION
-                      </button>
-                    </div>
-                  </div>
                 </div>
+            );
+        };
 
-                <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                  <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-                    <Navigation className="text-green-400 w-5 h-5" /> The Fuel Mix: Matrix vs. Biophilic
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-6">
-                      <label className="block">
-                        <span className="text-[10px] text-slate-400 uppercase font-mono tracking-widest">Self-Help (Individualism)</span>
-                        <input type="range" className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500" />
-                      </label>
-                      <label className="block">
-                        <span className="text-[10px] text-slate-400 uppercase font-mono tracking-widest">Systems-Health (Collective Care)</span>
-                        <input type="range" className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-green-500" />
-                      </label>
-                    </div>
-                    <div className="flex items-center bg-slate-950 p-4 border border-slate-800 rounded-xl">
-                      <p className="text-xs text-slate-400 italic">"You are not a consumer; you are an inhabitant. Your energy must flow into the soil, not the ticker tape."</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'challenge' && (
-              <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-xl">
-                <div className="mb-8">
-                  <h3 className="text-2xl font-bold mb-2 text-green-400">The 9 by 21 Challenge</h3>
-                  <p className="text-sm text-slate-400">9 planetary boundaries crossed. 21 weeks to rebuild your local circuit.</p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  <div className="space-y-4">
-                    <h4 className="font-bold flex items-center gap-2 text-green-500 uppercase text-xs tracking-tighter border-b border-green-900/30 pb-2">
-                      <Leaf className="w-4 h-4" /> Earth Care
-                    </h4>
-                    {['Trace local watershed', 'Build a Soil Sponge', 'Plant a Mother Tree'].map((t) => (
-                      <div key={t} className="flex items-center gap-3 text-sm p-2 hover:bg-slate-800 rounded transition-colors group cursor-pointer">
-                        <div className="w-4 h-4 border border-slate-600 rounded group-hover:border-green-500 transition-colors"></div>
-                        <span className="text-slate-300">{t}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="space-y-4">
-                    <h4 className="font-bold flex items-center gap-2 text-sky-500 uppercase text-xs tracking-tighter border-b border-sky-900/30 pb-2">
-                      <Heart className="w-4 h-4" /> People Care
-                    </h4>
-                    {['Build a Trust Hub', 'Inventory Creative Power', 'Host a Grief Gate'].map((t) => (
-                      <div key={t} className="flex items-center gap-3 text-sm p-2 hover:bg-slate-800 rounded transition-colors group cursor-pointer">
-                        <div className="w-4 h-4 border border-slate-600 rounded group-hover:border-sky-500 transition-colors"></div>
-                        <span className="text-slate-300">{t}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="space-y-4">
-                    <h4 className="font-bold flex items-center gap-2 text-yellow-500 uppercase text-xs tracking-tighter border-b border-yellow-900/30 pb-2">
-                      <Recycle className="w-4 h-4" /> Fair Share
-                    </h4>
-                    {['Shorten Well-being Distance', 'Shift Funds to Local BioFi', 'Redirect one Matrix Talent'].map((t) => (
-                      <div key={t} className="flex items-center gap-3 text-sm p-2 hover:bg-slate-800 rounded transition-colors group cursor-pointer">
-                        <div className="w-4 h-4 border border-slate-600 rounded group-hover:border-yellow-500 transition-colors"></div>
-                        <span className="text-slate-300">{t}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Sidebar Area */}
-          <div className="lg:col-span-4 space-y-6">
-            
-            {/* Quick Stats */}
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-              <h4 className="text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2">
-                <Thermometer className="w-3 h-3" /> Core Vitals
-              </h4>
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded bg-sky-500/10 flex items-center justify-center">
-                      <Droplets className="text-sky-400 w-4 h-4" />
-                    </div>
-                    <span className="text-xs font-semibold">Watershed Literacy</span>
-                  </div>
-                  <span className="text-xs font-mono text-sky-400">15%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded bg-green-500/10 flex items-center justify-center">
-                      <Anchor className="text-green-400 w-4 h-4" />
-                    </div>
-                    <span className="text-xs font-semibold">Buoyancy Index</span>
-                  </div>
-                  <span className="text-xs font-mono text-green-400">LOW</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded bg-amber-500/10 flex items-center justify-center">
-                      <AlertTriangle className="text-amber-400 w-4 h-4" />
-                    </div>
-                    <span className="text-xs font-semibold">Overshoot Gap</span>
-                  </div>
-                  <span className="text-xs font-mono text-amber-400">CRITICAL</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Transmission from 2126 */}
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <Waves className="w-24 h-24 text-sky-400" />
-              </div>
-              <h4 className="text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2">
-                <MessageCircle className="w-3 h-3" /> Signal: Year 2126
-              </h4>
-              <p className="text-sm italic text-slate-300 leading-relaxed transition-all duration-1000">
-                {visions[visionIdx]}
-              </p>
-              <div className="mt-4 pt-4 border-t border-slate-800 flex items-center gap-2 text-[10px] text-slate-500 font-mono">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                STABLE CONNECTION
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="p-4 bg-sky-600 rounded-xl flex items-center justify-between group cursor-pointer hover:bg-sky-500 transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-                  <Droplets className="text-white w-5 h-5" />
-                </div>
-                <div>
-                  <h5 className="text-sm font-bold text-white">Find Your Address</h5>
-                  <p className="text-[10px] text-sky-100">Locate your hydrological home</p>
-                </div>
-              </div>
-              <ArrowRight className="text-white w-5 h-5 transform group-hover:translate-x-1 transition-transform" />
-            </div>
-
-          </div>
-        </div>
-
-        {/* Footer */}
-        <footer className="mt-12 text-center text-slate-600 text-[10px] font-mono uppercase tracking-[0.2em] space-y-2">
-          <p>© 2026 Lifeboat Blueprint | Cold Spring, MN | Earth</p>
-          <p>The shop is open. Pass the wrench.</p>
-        </footer>
-
-      </div>
-    </div>
-  );
-};
-
-export default App;
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
