@@ -4,10 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lifeboat Command Center</title>
+    <!-- Tailwind CSS for Styling -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React and Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -26,7 +29,7 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- 1. FIREBASE CONFIGURATION (Wired with your Shop Keys) ---
+        // --- 1. FIREBASE CONFIGURATION ---
         const firebaseConfig = {
             apiKey: "AIzaSyCNRy34pRb92F5p7PrqP7d-He-oDUbjd40",
             authDomain: "lifeboat-blueprint.firebaseapp.com",
@@ -49,7 +52,7 @@
             console.error("Firebase initialization failed:", err);
         }
 
-        // --- 3. AI MENTOR CONFIGURATION (Wired with your Gemini Key) ---
+        // --- 3. AI MENTOR CONFIGURATION ---
         const API_KEY = "AIzaSyADMbopwVmqyyUHELR0HB0CN3NGNOrxedE"; 
         const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
@@ -90,13 +93,11 @@
                         setUser(u);
                         setConnError("");
                     } else {
+                        // Try to sign in anonymously
                         auth.signInAnonymously().catch(e => {
                             console.error("Auth error", e);
-                            if (e.code === 'auth/unauthorized-domain') {
-                                setConnError("UNAUTHORIZED DOMAIN. Add 'duanekuss-bit.github.io' to Firebase Auth Settings.");
-                            } else {
-                                setConnError("CHECK: Enable 'Anonymous' in Firebase Auth tab.");
-                            }
+                            // Diagnostic: Show the exact error code to help Duane debug
+                            setConnError(`SERVICE ERROR: ${e.code} - ${e.message}`);
                         });
                     }
                 });
@@ -119,7 +120,7 @@
                         }));
                     }
                 }, (err) => {
-                    setConnError("FIREBASE ERROR: Check Firestore Rules (Set to Test Mode).");
+                    setConnError(`FIRESTORE ERROR: ${err.code}`);
                 });
                 return () => unsubscribe();
             }, [user]);
@@ -149,7 +150,7 @@
                     return;
                 }
                 setIsTyping(true);
-                const systemPrompt = "You are 'The Lookout,' an AI mentor from Duane Kuss's book 'The Lifeboat Blueprint.' You are grounded, calm, but urgent. You use maritime and mechanical metaphors. We are in April 2026. The Industrial Titanic is failing; the Lifeboat is being built through localization and bioregionalism. Help the user move from 'Me' to 'We'.";
+                const systemPrompt = "You are 'The Lookout,' an AI mentor from Duane Kuss's book 'The Lifeboat Blueprint.' You are grounded, calm, but urgent. Use maritime and mechanical metaphors. We are in April 2026. Help the user move from 'Me' to 'We'.";
                 const payload = {
                     contents: [{ parts: [{ text: userMsg }] }],
                     systemInstruction: { parts: [{ text: systemPrompt }] }
@@ -164,7 +165,7 @@
                     const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
                     setChatHistory(prev => [...prev, { role: 'assistant', content: text }]);
                 } catch (error) {
-                    setChatHistory(prev => [...prev, { role: 'assistant', content: "Signal interference on the Bridge. Check your API Key status." }]);
+                    setChatHistory(prev => [...prev, { role: 'assistant', content: "Signal interference on the Bridge. Check your API Key." }]);
                 } finally { setIsTyping(false); }
             };
 
@@ -177,7 +178,9 @@
                     <div className="max-w-6xl mx-auto">
                         <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 border-b border-slate-800 pb-6">
                             <div>
-                                <h1 className="text-2xl font-bold text-sky-400">🚢 Lifeboat Command Center</h1>
+                                <h1 className="text-2xl font-bold text-sky-400 flex items-center gap-2">
+                                    <span>🚢</span> Lifeboat Command Center
+                                </h1>
                                 <p className="text-[10px] text-slate-500 uppercase mono">{saveStatus || "System Active | 2026"}</p>
                             </div>
                             <div className="flex gap-2 mt-4 overflow-x-auto">
@@ -185,7 +188,7 @@
                                     <button 
                                         key={t}
                                         onClick={() => setActiveTab(t)}
-                                        className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase border transition-all whitespace-nowrap ${activeTab === t ? 'bg-sky-600 border-sky-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}
+                                        className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase border transition-all whitespace-nowrap ${activeTab === t ? 'bg-sky-600 border-sky-500 shadow-lg shadow-sky-900/20' : 'bg-slate-900 border-slate-800 text-slate-400'}`}
                                     >
                                         {t.replace('-', ' ')}
                                     </button>
@@ -204,7 +207,7 @@
                                                 </div>
                                                 <span className="font-bold text-sm tracking-tight">The Lookout</span>
                                             </div>
-                                            <div className="text-[10px] text-slate-500 mono tracking-tighter">FREQUENCY: 2.5-FLASH</div>
+                                            <div className="text-[10px] text-slate-500 mono">AI MENTOR: ONLINE</div>
                                         </div>
                                         <div className="flex-1 overflow-y-auto p-6 space-y-4">
                                             {chatHistory.length === 0 && (
@@ -232,11 +235,11 @@
                                 )}
                                 {activeTab === 'engine-room' && (
                                     <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 space-y-6 shadow-xl">
-                                        <h3 className="text-sky-400 font-bold flex items-center gap-2">📍 Bioregional Address</h3>
-                                        <p className="text-xs text-slate-400 italic leading-relaxed">Stop being a resident of a zip code; start being an inhabitant of a watershed. Where does the water flow?</p>
-                                        <input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm focus:ring-2 focus:ring-sky-500 outline-none" placeholder="e.g. Upper Mississippi Watershed" value={logData.watershed} onChange={e => { const d = {...logData, watershed: e.target.value}; setLogData(d); saveToCloud(d); }} />
+                                        <h3 className="text-sky-400 font-bold">📍 Bioregional Address</h3>
+                                        <p className="text-xs text-slate-400 italic">Where does the rain on your roof go?</p>
+                                        <input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm" placeholder="e.g. Upper Mississippi Watershed" value={logData.watershed} onChange={e => { const d = {...logData, watershed: e.target.value}; setLogData(d); saveToCloud(d); }} />
                                         
-                                        <h3 className="text-amber-500 font-bold mt-8 flex items-center gap-2">⚠️ Naming the Iceberg</h3>
+                                        <h3 className="text-amber-500 font-bold mt-8">⚠️ Naming the Iceberg</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm" placeholder="Global Stressor" value={logData.iceberg.global} onChange={e => { const d = {...logData, iceberg: {...logData.iceberg, global: e.target.value}}; setLogData(d); saveToCloud(d); }} />
                                             <input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm" placeholder="Local Manifestation" value={logData.iceberg.local} onChange={e => { const d = {...logData, iceberg: {...logData.iceberg, local: e.target.value}}; setLogData(d); saveToCloud(d); }} />
@@ -268,8 +271,7 @@
                                 )}
                                 {activeTab === 'deep-time' && (
                                     <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-xl flex flex-col h-full min-h-[450px]">
-                                        <h3 className="text-purple-400 font-bold mb-4 flex items-center gap-2">⏳ Letter to 2126</h3>
-                                        <p className="text-xs text-slate-400 mb-6 italic">Write to the seventh generation. Your choices today are their inheritance.</p>
+                                        <h3 className="text-purple-400 font-bold mb-4">⏳ Letter to 2126</h3>
                                         <textarea className="flex-1 bg-slate-950 border border-slate-800 rounded-2xl p-6 text-sm italic outline-none min-h-[300px] leading-relaxed text-slate-300" value={logData.letterTo2126} onChange={e => { const d = {...logData, letterTo2126: e.target.value}; setLogData(d); saveToCloud(d); }} />
                                     </div>
                                 )}
@@ -277,14 +279,12 @@
 
                             <div className="lg:col-span-4 space-y-6">
                                 <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl min-h-[140px] flex flex-col justify-center shadow-lg">
-                                    <h4 className="text-[10px] font-mono uppercase text-slate-500 mb-2 tracking-widest">Transmission 2126</h4>
-                                    <p className="text-sm italic text-slate-300 leading-relaxed">{visions[visionIdx]}</p>
+                                    <h4 className="text-[10px] font-mono uppercase text-slate-500 mb-2">Transmission 2126</h4>
+                                    <p className="text-sm italic text-slate-300">{visions[visionIdx]}</p>
                                 </div>
-                                <div className="bg-gradient-to-br from-sky-600 to-sky-800 p-8 rounded-3xl shadow-2xl relative overflow-hidden">
-                                    <h4 className="font-bold mb-2 text-white">Active Service</h4>
-                                    <p className="text-xs text-sky-100 mb-6 leading-relaxed">Your "Service Record" is being updated in your cloud filing cabinet.</p>
+                                <div className="bg-gradient-to-br from-sky-600 to-sky-800 p-8 rounded-3xl shadow-2xl">
+                                    <h4 className="font-bold mb-2">Active Service</h4>
                                     <button onClick={() => setActiveTab('deep-time')} className="w-full bg-white text-sky-900 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-sky-50 transition-colors">View Seventh Gen Letter</button>
-                                    <div className="absolute -bottom-6 -right-4 text-white/10 text-9xl font-bold select-none">2126</div>
                                 </div>
                             </div>
                         </div>
