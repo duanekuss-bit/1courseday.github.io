@@ -29,7 +29,8 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- 1. FIREBASE CONFIGURATION ---
+        // --- 1. FIREBASE CONFIGURATION (The Filing Cabinet Keys) ---
+        // ACTION: Double-check the apiKey below against your Firebase Project Settings.
         const firebaseConfig = {
             apiKey: "AIzaSyCNRy34pRb92F5p7PrqP7d-He-oDUbjd40",
             authDomain: "lifeboat-blueprint.firebaseapp.com",
@@ -52,7 +53,7 @@
             console.error("Firebase initialization failed:", err);
         }
 
-        // --- 3. AI MENTOR CONFIGURATION ---
+        // --- 3. AI MENTOR CONFIGURATION (The Radio Battery) ---
         const API_KEY = "AIzaSyADMbopwVmqyyUHELR0HB0CN3NGNOrxedE"; 
         const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
@@ -96,8 +97,7 @@
                         // Try to sign in anonymously
                         auth.signInAnonymously().catch(e => {
                             console.error("Auth error", e);
-                            // Diagnostic: Show the exact error code to help Duane debug
-                            setConnError(`SERVICE ERROR: ${e.code} - ${e.message}`);
+                            setConnError(`SERVICE ERROR: ${e.code}`);
                         });
                     }
                 });
@@ -165,7 +165,7 @@
                     const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
                     setChatHistory(prev => [...prev, { role: 'assistant', content: text }]);
                 } catch (error) {
-                    setChatHistory(prev => [...prev, { role: 'assistant', content: "Signal interference on the Bridge. Check your API Key." }]);
+                    setChatHistory(prev => [...prev, { role: 'assistant', content: "Signal interference on the Bridge. Check your Gemini API Key." }]);
                 } finally { setIsTyping(false); }
             };
 
@@ -207,7 +207,7 @@
                                                 </div>
                                                 <span className="font-bold text-sm tracking-tight">The Lookout</span>
                                             </div>
-                                            <div className="text-[10px] text-slate-500 mono">AI MENTOR: ONLINE</div>
+                                            <div className="text-[10px] text-slate-500 mono">AI MENTOR: ACTIVE</div>
                                         </div>
                                         <div className="flex-1 overflow-y-auto p-6 space-y-4">
                                             {chatHistory.length === 0 && (
@@ -236,9 +236,7 @@
                                 {activeTab === 'engine-room' && (
                                     <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 space-y-6 shadow-xl">
                                         <h3 className="text-sky-400 font-bold">📍 Bioregional Address</h3>
-                                        <p className="text-xs text-slate-400 italic">Where does the rain on your roof go?</p>
                                         <input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm" placeholder="e.g. Upper Mississippi Watershed" value={logData.watershed} onChange={e => { const d = {...logData, watershed: e.target.value}; setLogData(d); saveToCloud(d); }} />
-                                        
                                         <h3 className="text-amber-500 font-bold mt-8">⚠️ Naming the Iceberg</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm" placeholder="Global Stressor" value={logData.iceberg.global} onChange={e => { const d = {...logData, iceberg: {...logData.iceberg, global: e.target.value}}; setLogData(d); saveToCloud(d); }} />
@@ -272,7 +270,7 @@
                                 {activeTab === 'deep-time' && (
                                     <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-xl flex flex-col h-full min-h-[450px]">
                                         <h3 className="text-purple-400 font-bold mb-4">⏳ Letter to 2126</h3>
-                                        <textarea className="flex-1 bg-slate-950 border border-slate-800 rounded-2xl p-6 text-sm italic outline-none min-h-[300px] leading-relaxed text-slate-300" value={logData.letterTo2126} onChange={e => { const d = {...logData, letterTo2126: e.target.value}; setLogData(d); saveToCloud(d); }} />
+                                        <textarea className="flex-1 bg-slate-950 border border-slate-800 rounded-2xl p-6 text-sm italic outline-none leading-relaxed text-slate-300" value={logData.letterTo2126} onChange={e => { const d = {...logData, letterTo2126: e.target.value}; setLogData(d); saveToCloud(d); }} />
                                     </div>
                                 )}
                             </div>
@@ -296,7 +294,9 @@
                                     {connError || "Filing Cabinet: Online & Connected"}
                                 </span>
                             </div>
-                            <div className="text-[8px] text-slate-700 font-mono tracking-tighter">CREW_UID: {user ? user.uid : "..."}</div>
+                            <div className="text-[8px] text-slate-700 font-mono tracking-tighter uppercase">
+                                {user ? `CREW_UID: ${user.uid}` : "Handshaking with Bridge..."}
+                            </div>
                         </div>
                     </div>
                 </div>
