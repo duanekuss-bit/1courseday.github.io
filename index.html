@@ -29,17 +29,7 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- 1. FIREBASE CONFIGURATION (The Filing Cabinet Keys) ---
-        // ACTION: Double-check the apiKey below against your Firebase Project Settings.
-        const firebaseConfig = {
-            apiKey: "AIzaSyCNRy34pRb92F5p7PrqP7d-He-oDUbjd40",
-            authDomain: "lifeboat-blueprint.firebaseapp.com",
-            projectId: "lifeboat-blueprint",
-            storageBucket: "lifeboat-blueprint.firebasestorage.app",
-            messagingSenderId: "1093280288322",
-            appId: "1:1093280288322:web:f33d22f6ed776d9aa7a7db",
-            measurementId: "G-2GF7EJSGJE"
-        };
+    
 
         // --- 2. INITIALIZE FIREBASE ---
         let db, auth;
