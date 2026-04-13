@@ -4,13 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lifeboat Command Center</title>
-    <!-- Tailwind CSS for Styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React and Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -52,9 +49,8 @@
             console.error("Firebase initialization failed:", err);
         }
 
-        // --- 3. AI MENTOR CONFIGURATION ---
-        // PASTE YOUR GEMINI API KEY BELOW FOR "THE LOOKOUT" TO RESPOND
-        const API_KEY = ""; 
+        // --- 3. AI MENTOR CONFIGURATION (Wired with your Gemini Key) ---
+        const API_KEY = "AIzaSyADMbopwVmqyyUHELR0HB0CN3NGNOrxedE"; 
         const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
 
@@ -68,7 +64,6 @@
             const [saveStatus, setSaveStatus] = useState("");
             const [connError, setConnError] = useState("");
             
-            // Shared Data State
             const [logData, setLogData] = useState({
                 watershed: "",
                 iceberg: { global: "", local: "" },
@@ -89,7 +84,6 @@
 
             const chatEndRef = useRef(null);
 
-            // Auth Listener
             useEffect(() => {
                 const unsubscribe = auth.onAuthStateChanged((u) => {
                     if (u) {
@@ -98,14 +92,17 @@
                     } else {
                         auth.signInAnonymously().catch(e => {
                             console.error("Auth error", e);
-                            setConnError("Check: Enable 'Anonymous' in Firebase Auth tab.");
+                            if (e.code === 'auth/unauthorized-domain') {
+                                setConnError("UNAUTHORIZED DOMAIN. Add 'duanekuss-bit.github.io' to Firebase Auth Settings.");
+                            } else {
+                                setConnError("CHECK: Enable 'Anonymous' in Firebase Auth tab.");
+                            }
                         });
                     }
                 });
                 return () => unsubscribe();
             }, []);
 
-            // Data Syncing
             useEffect(() => {
                 if (!user) return;
                 const docRef = db.collection('artifacts').doc('lifeboat-blueprint-2026').collection('users').doc(user.uid);
@@ -117,12 +114,12 @@
                             ...prev, 
                             ...data,
                             challenges: data.challenges || prev.challenges,
-                            iceberg: data.iceberg || prev.iceberg
+                            iceberg: data.iceberg || prev.iceberg,
+                            letterTo2126: data.letterTo2126 || prev.letterTo2126
                         }));
                     }
                 }, (err) => {
-                    console.error("Firestore Listen Error:", err);
-                    setConnError("Check: Create Firestore Database & set Rules to Test Mode.");
+                    setConnError("FIREBASE ERROR: Check Firestore Rules (Set to Test Mode).");
                 });
                 return () => unsubscribe();
             }, [user]);
@@ -135,14 +132,9 @@
                     setSaveStatus("Synced");
                     setTimeout(() => setSaveStatus(""), 2000);
                 } catch (e) {
-                    console.error("Save Error:", e);
                     setSaveStatus("Error");
                 }
             };
-
-            useEffect(() => {
-                chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-            }, [chatHistory, isTyping]);
 
             useEffect(() => {
                 const interval = setInterval(() => {
@@ -153,66 +145,47 @@
 
             const callGemini = async (userMsg) => {
                 if (!API_KEY) {
-                    setChatHistory(prev => [...prev, { role: 'assistant', content: "Lookout offline. Paste your Gemini API key in the index.html file to enable mentor logic." }]);
+                    setChatHistory(prev => [...prev, { role: 'assistant', content: "Lookout offline. API Key missing." }]);
                     return;
                 }
                 setIsTyping(true);
-                const systemPrompt = "You are 'The Lookout,' an AI mentor from Duane Kuss's 'The Lifeboat Blueprint.' Be grounded, urgent, and use maritime/mechanical metaphors. Help the user bridge 'Me' to 'We'.";
+                const systemPrompt = "You are 'The Lookout,' an AI mentor from Duane Kuss's book 'The Lifeboat Blueprint.' You are grounded, calm, but urgent. You use maritime and mechanical metaphors. We are in April 2026. The Industrial Titanic is failing; the Lifeboat is being built through localization and bioregionalism. Help the user move from 'Me' to 'We'.";
                 const payload = {
                     contents: [{ parts: [{ text: userMsg }] }],
                     systemInstruction: { parts: [{ text: systemPrompt }] }
                 };
-
                 try {
-                    const response = await fetch(API_URL, {
-                        method: 'POST',
+                    const response = await fetch(API_URL, { 
+                        method: 'POST', 
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
+                        body: JSON.stringify(payload) 
                     });
                     const result = await response.json();
                     const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
                     setChatHistory(prev => [...prev, { role: 'assistant', content: text }]);
                 } catch (error) {
-                    setChatHistory(prev => [...prev, { role: 'assistant', content: "Signal interference. Please check your Gemini API key." }]);
-                } finally {
-                    setIsTyping(false);
-                }
+                    setChatHistory(prev => [...prev, { role: 'assistant', content: "Signal interference on the Bridge. Check your API Key status." }]);
+                } finally { setIsTyping(false); }
             };
 
-            const toggleChallenge = (cat, idx) => {
-                const updated = { ...logData };
-                updated.challenges[cat][idx] = !updated.challenges[cat][idx];
-                setLogData(updated);
-                saveToCloud(updated);
-            };
-
-            const handleSubmit = (e) => {
-                e.preventDefault();
-                if (!inputMessage.trim()) return;
-                const msg = inputMessage;
-                setInputMessage("");
-                setChatHistory(prev => [...prev, { role: 'user', content: msg }]);
-                callGemini(msg);
-            };
+            useEffect(() => {
+                chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, [chatHistory, isTyping]);
 
             return (
                 <div className="min-h-screen text-slate-100 p-4 md:p-8">
                     <div className="max-w-6xl mx-auto">
                         <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 border-b border-slate-800 pb-6">
                             <div>
-                                <h1 className="text-2xl font-bold text-sky-400 flex items-center gap-2">
-                                    <span className="text-xl">🚢</span> Lifeboat Command Center
-                                </h1>
-                                <p className="text-[10px] text-slate-500 mono uppercase tracking-widest mt-1">
-                                    {saveStatus ? <span className="text-sky-500 animate-pulse">{saveStatus}</span> : "System Active | April 2026"}
-                                </p>
+                                <h1 className="text-2xl font-bold text-sky-400">🚢 Lifeboat Command Center</h1>
+                                <p className="text-[10px] text-slate-500 uppercase mono">{saveStatus || "System Active | 2026"}</p>
                             </div>
-                            <div className="flex gap-2 mt-4 md:mt-0 overflow-x-auto pb-2 md:pb-0">
+                            <div className="flex gap-2 mt-4 overflow-x-auto">
                                 {['lookout', 'engine-room', 'challenge', 'deep-time'].map(t => (
                                     <button 
                                         key={t}
                                         onClick={() => setActiveTab(t)}
-                                        className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase border transition-all whitespace-nowrap ${activeTab === t ? 'bg-sky-600 border-sky-500 shadow-lg shadow-sky-900/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                                        className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase border transition-all whitespace-nowrap ${activeTab === t ? 'bg-sky-600 border-sky-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}
                                     >
                                         {t.replace('-', ' ')}
                                     </button>
@@ -223,7 +196,7 @@
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                             <div className="lg:col-span-8">
                                 {activeTab === 'lookout' && (
-                                    <div className="bg-slate-900 border border-slate-800 rounded-3xl h-[600px] flex flex-col shadow-2xl">
+                                    <div className="bg-slate-900 border border-slate-800 rounded-3xl h-[550px] flex flex-col shadow-2xl">
                                         <div className="p-4 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-full bg-sky-500/20 flex items-center justify-center border border-sky-500/30">
@@ -231,13 +204,12 @@
                                                 </div>
                                                 <span className="font-bold text-sm tracking-tight">The Lookout</span>
                                             </div>
-                                            <div className="text-[10px] text-slate-500 mono">WAVE-LOG: ACTIVE</div>
+                                            <div className="text-[10px] text-slate-500 mono tracking-tighter">FREQUENCY: 2.5-FLASH</div>
                                         </div>
                                         <div className="flex-1 overflow-y-auto p-6 space-y-4">
                                             {chatHistory.length === 0 && (
                                                 <div className="text-center py-20 opacity-40">
-                                                    <p className="text-sm italic">"The ice is close. What's your report from the local watershed?"</p>
-                                                    {!API_KEY && <p className="mt-4 text-xs text-amber-500">Note: API Key missing in code. AI Mentor is offline.</p>}
+                                                    <p className="text-sm italic">"The ice is close, Duane. What's your report from the local watershed?"</p>
                                                 </div>
                                             )}
                                             {chatHistory.map((m, i) => (
@@ -247,153 +219,85 @@
                                                     </div>
                                                 </div>
                                             ))}
-                                            {isTyping && <div className="text-[10px] text-sky-400 animate-pulse font-mono px-2">LOOKOUT IS ANALYZING...</div>}
+                                            {isTyping && <div className="text-[10px] text-sky-400 animate-pulse font-mono px-2 italic">LOOKOUT IS ANALYZING...</div>}
                                             <div ref={chatEndRef} />
                                         </div>
-                                        <form onSubmit={handleSubmit} className="p-4 border-t border-slate-800 bg-slate-900/50">
+                                        <form onSubmit={(e) => { e.preventDefault(); if (inputMessage) { setChatHistory(p => [...p, {role:'user', content:inputMessage}]); callGemini(inputMessage); setInputMessage(""); }}} className="p-4 border-t border-slate-800 bg-slate-900/50">
                                             <div className="relative">
-                                                <input 
-                                                    className="w-full bg-slate-950 border border-slate-700 rounded-2xl py-4 px-6 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 transition-all"
-                                                    placeholder="Report local observation..."
-                                                    value={inputMessage}
-                                                    onChange={e => setInputMessage(e.target.value)}
-                                                />
-                                                <button type="submit" className="absolute right-3 top-3 bg-sky-600 p-2 rounded-xl hover:bg-sky-500">
-                                                    <span>➡️</span>
-                                                </button>
+                                                <input className="w-full bg-slate-950 border border-slate-700 rounded-2xl p-4 pr-12 text-sm focus:ring-2 focus:ring-sky-500 outline-none" placeholder="Report observation..." value={inputMessage} onChange={e => setInputMessage(e.target.value)} />
+                                                <button type="submit" className="absolute right-3 top-2.5 p-1.5 bg-sky-600 rounded-xl">➡️</button>
                                             </div>
                                         </form>
                                     </div>
                                 )}
-
                                 {activeTab === 'engine-room' && (
-                                    <div className="space-y-6 animate-in fade-in duration-500">
-                                        <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-xl">
-                                            <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-sky-400">📍 Bioregional Address</h3>
-                                            <p className="text-xs text-slate-400 mb-4 italic">Where does the rain on your roof go? Stop being a resident, start being an inhabitant.</p>
-                                            <input 
-                                                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm focus:ring-2 focus:ring-sky-500 outline-none"
-                                                placeholder="e.g. Upper Mississippi Watershed"
-                                                value={logData.watershed}
-                                                onChange={e => { const d = {...logData, watershed: e.target.value}; setLogData(d); saveToCloud(d); }}
-                                            />
-                                        </div>
-                                        <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-xl">
-                                            <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-amber-500">⚠️ Naming the Iceberg</h3>
-                                            <div className="space-y-4">
-                                                <input 
-                                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm"
-                                                    placeholder="Global Stressor (e.g. Supply Chain Fragility)"
-                                                    value={logData.iceberg.global}
-                                                    onChange={e => { const d = {...logData, iceberg: {...logData.iceberg, global: e.target.value}}; setLogData(d); saveToCloud(d); }}
-                                                />
-                                                <input 
-                                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm"
-                                                    placeholder="Local Manifestation (e.g. Empty Shelves / High Prices)"
-                                                    value={logData.iceberg.local}
-                                                    onChange={e => { const d = {...logData, iceberg: {...logData.iceberg, local: e.target.value}}; setLogData(d); saveToCloud(d); }}
-                                                />
-                                            </div>
+                                    <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 space-y-6 shadow-xl">
+                                        <h3 className="text-sky-400 font-bold flex items-center gap-2">📍 Bioregional Address</h3>
+                                        <p className="text-xs text-slate-400 italic leading-relaxed">Stop being a resident of a zip code; start being an inhabitant of a watershed. Where does the water flow?</p>
+                                        <input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm focus:ring-2 focus:ring-sky-500 outline-none" placeholder="e.g. Upper Mississippi Watershed" value={logData.watershed} onChange={e => { const d = {...logData, watershed: e.target.value}; setLogData(d); saveToCloud(d); }} />
+                                        
+                                        <h3 className="text-amber-500 font-bold mt-8 flex items-center gap-2">⚠️ Naming the Iceberg</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm" placeholder="Global Stressor" value={logData.iceberg.global} onChange={e => { const d = {...logData, iceberg: {...logData.iceberg, global: e.target.value}}; setLogData(d); saveToCloud(d); }} />
+                                            <input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm" placeholder="Local Manifestation" value={logData.iceberg.local} onChange={e => { const d = {...logData, iceberg: {...logData.iceberg, local: e.target.value}}; setLogData(d); saveToCloud(d); }} />
                                         </div>
                                     </div>
                                 )}
-
                                 {activeTab === 'challenge' && (
-                                    <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-xl space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-                                        <div>
-                                            <h3 className="text-xl font-bold text-green-400 mb-2">The 9 by 21 Challenge</h3>
-                                            <p className="text-xs text-slate-500">9 boundaries crossed. 21 weeks to rebuild. Syncing your progress to the cloud.</p>
-                                        </div>
+                                    <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-xl">
+                                        <h3 className="text-green-400 font-bold mb-6">The 9 by 21 Challenge</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                                             {['earth', 'people', 'fair'].map(cat => (
                                                 <div key={cat} className="space-y-4">
-                                                    <h4 className="text-[10px] text-slate-400 uppercase font-mono tracking-widest border-b border-slate-800 pb-2">{cat} Care</h4>
-                                                    <div className="space-y-3">
-                                                        {['Action 1', 'Action 2', 'Action 3'].map((a, i) => {
-                                                            const labels = {
-                                                                earth: ['Trace Watershed', 'Soil Sponge', 'Mother Tree'],
-                                                                people: ['Trust Hub', 'Skill Inventory', 'Grief Gate'],
-                                                                fair: ['BioFi Shift', 'Shorten Distances', 'Talent Audit']
-                                                            };
-                                                            return (
-                                                                <div key={i} onClick={() => toggleChallenge(cat, i)} className="flex items-center gap-3 cursor-pointer group">
-                                                                    <div className={`w-5 h-5 rounded-lg border border-slate-700 flex items-center justify-center transition-all ${logData.challenges[cat][i] ? 'bg-green-600 border-green-500' : 'group-hover:border-slate-500'}`}>
-                                                                        {logData.challenges[cat][i] && <span className="text-[10px]">✔</span>}
-                                                                    </div>
-                                                                    <span className={`text-xs ${logData.challenges[cat][i] ? 'text-slate-200' : 'text-slate-500'}`}>{labels[cat][i]}</span>
+                                                    <h4 className="text-[10px] text-slate-400 uppercase font-mono border-b border-slate-800 pb-2">{cat} Care</h4>
+                                                    {['Trace Watershed', 'Soil Sponge', 'Mother Tree'].map((a, i) => {
+                                                        const label = cat === 'people' ? ['Trust Hub', 'Skill Inventory', 'Grief Gate'][i] : (cat === 'fair' ? ['BioFi Shift', 'Shorten Dist.', 'Talent Audit'][i] : a);
+                                                        return (
+                                                            <div key={i} onClick={() => { const updated = {...logData}; updated.challenges[cat][i] = !updated.challenges[cat][i]; setLogData(updated); saveToCloud(updated); }} className="flex items-center gap-3 cursor-pointer group">
+                                                                <div className={`w-5 h-5 rounded border ${logData.challenges[cat][i] ? 'bg-green-600 border-green-500' : 'border-slate-700'}`}>
+                                                                    {logData.challenges[cat][i] && <span className="text-[10px] flex items-center justify-center">✔</span>}
                                                                 </div>
-                                                            );
-                                                        })}
-                                                    </div>
+                                                                <span className={`text-xs ${logData.challenges[cat][i] ? 'text-slate-200' : 'text-slate-500'}`}>{label}</span>
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
                                 )}
-
                                 {activeTab === 'deep-time' && (
-                                    <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-xl animate-in zoom-in-95 duration-500 h-full flex flex-col">
-                                        <h3 className="text-xl font-bold text-purple-400 mb-2 flex items-center gap-2">⏳ Deep Time Archive</h3>
-                                        <p className="text-xs text-slate-400 mb-6 italic">"You will never meet the seventh generation, but they will inhabit the results of your labor. Write to them now."</p>
-                                        <textarea 
-                                            className="w-full flex-1 bg-slate-950 border border-slate-800 rounded-2xl p-6 text-sm italic focus:ring-2 focus:ring-purple-500 outline-none leading-relaxed text-slate-300 min-h-[400px]"
-                                            placeholder="Dear Crew of 2126, in April 2026 the ice was melting and the engines were sputtering..."
-                                            value={logData.letterTo2126}
-                                            onChange={e => { const d = {...logData, letterTo2126: e.target.value}; setLogData(d); saveToCloud(d); }}
-                                        />
-                                        <div className="mt-4 p-4 bg-slate-950/50 border border-slate-800 rounded-xl">
-                                            <p className="text-[10px] text-slate-600 uppercase font-mono">Status: Stored in Seventh-Generation Vault</p>
-                                        </div>
+                                    <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-xl flex flex-col h-full min-h-[450px]">
+                                        <h3 className="text-purple-400 font-bold mb-4 flex items-center gap-2">⏳ Letter to 2126</h3>
+                                        <p className="text-xs text-slate-400 mb-6 italic">Write to the seventh generation. Your choices today are their inheritance.</p>
+                                        <textarea className="flex-1 bg-slate-950 border border-slate-800 rounded-2xl p-6 text-sm italic outline-none min-h-[300px] leading-relaxed text-slate-300" value={logData.letterTo2126} onChange={e => { const d = {...logData, letterTo2126: e.target.value}; setLogData(d); saveToCloud(d); }} />
                                     </div>
                                 )}
                             </div>
 
                             <div className="lg:col-span-4 space-y-6">
-                                <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl relative overflow-hidden shadow-xl min-h-[140px] flex flex-col justify-center">
-                                    <h4 className="text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-4">Transmission 2126</h4>
-                                    <p className="text-sm italic text-slate-300 transition-all duration-1000 leading-relaxed">
-                                        {visions[visionIdx]}
-                                    </p>
+                                <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl min-h-[140px] flex flex-col justify-center shadow-lg">
+                                    <h4 className="text-[10px] font-mono uppercase text-slate-500 mb-2 tracking-widest">Transmission 2126</h4>
+                                    <p className="text-sm italic text-slate-300 leading-relaxed">{visions[visionIdx]}</p>
                                 </div>
                                 <div className="bg-gradient-to-br from-sky-600 to-sky-800 p-8 rounded-3xl shadow-2xl relative overflow-hidden">
-                                    <div className="relative z-10">
-                                        <h4 className="font-bold text-white mb-2">Active Service</h4>
-                                        <p className="text-xs text-sky-100 mb-6 leading-relaxed">Your "Service Record" is being updated in real-time as you inhabit your bioregion.</p>
-                                        <button 
-                                            onClick={() => setActiveTab('deep-time')}
-                                            className="w-full bg-white text-sky-900 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-sky-50 transition-colors shadow-lg active:scale-95"
-                                        >
-                                            View Seventh Gen Letter
-                                        </button>
-                                    </div>
-                                    <div className="absolute -bottom-4 -right-4 text-white/10 text-8xl font-bold opacity-20 select-none">2126</div>
-                                </div>
-                                <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-3xl">
-                                    <h4 className="text-[10px] font-mono uppercase text-slate-500 mb-4 tracking-tighter">Current Buoyancy</h4>
-                                    <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                                        <div className="h-full bg-sky-500 w-[20%] transition-all duration-1000"></div>
-                                    </div>
-                                    <p className="text-[10px] text-slate-600 mt-2 font-mono">STABILITY: LOW | ACTION REQUIRED</p>
+                                    <h4 className="font-bold mb-2 text-white">Active Service</h4>
+                                    <p className="text-xs text-sky-100 mb-6 leading-relaxed">Your "Service Record" is being updated in your cloud filing cabinet.</p>
+                                    <button onClick={() => setActiveTab('deep-time')} className="w-full bg-white text-sky-900 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-sky-50 transition-colors">View Seventh Gen Letter</button>
+                                    <div className="absolute -bottom-6 -right-4 text-white/10 text-9xl font-bold select-none">2126</div>
                                 </div>
                             </div>
                         </div>
                         
-                        {/* CONNECTION DIAGNOSTIC GAUGE */}
-                        <div className="mt-8 p-4 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-between">
+                        <div className="mt-8 p-4 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-between shadow-inner">
                             <div className="flex items-center gap-4">
-                                <div className={`w-3 h-3 rounded-full ${connError ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}></div>
-                                <span className="text-[10px] font-mono uppercase tracking-widest">
-                                    {connError ? "Connection Break: " + connError : "Filing Cabinet: Online & Connected"}
+                                <div className={`w-3 h-3 rounded-full ${connError ? 'bg-red-500 animate-pulse' : 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]'}`}></div>
+                                <span className="text-[10px] font-mono uppercase text-slate-500 tracking-widest">
+                                    {connError || "Filing Cabinet: Online & Connected"}
                                 </span>
                             </div>
-                            <div className="text-[8px] text-slate-700 font-mono">
-                                CREW_ID: {user ? user.uid : "PENDING..."}
-                            </div>
+                            <div className="text-[8px] text-slate-700 font-mono tracking-tighter">CREW_UID: {user ? user.uid : "..."}</div>
                         </div>
-
-                        <footer className="mt-8 text-center text-slate-600 text-[10px] font-mono uppercase tracking-[0.2em] py-8">
-                            <p>© 2026 Lifeboat Blueprint | Cold Spring, MN | The shop is open.</p>
-                        </footer>
                     </div>
                 </div>
             );
