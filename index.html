@@ -3,285 +3,361 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Navigation Deck - Lifeboat</title>
+    <title>Navigation Deck - Lifeboat Virtual Campus</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #0a0a0a; color: #f5f5f5; }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; }
-        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .animate-spin-slow { animation: spin-slow 12s linear infinite; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #050505; 
+            color: #e5e5e5;
+            -webkit-font-smoothing: antialiased;
+        }
+        .glass-panel {
+            background: rgba(23, 23, 23, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(64, 64, 64, 0.3);
+        }
+        .step-active { color: #f97316; }
+        .step-inactive { color: #525252; }
+        
+        /* Custom range slider styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #262626;
+            border-radius: 3px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #f97316;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -6px;
+            box-shadow: 0 0 10px rgba(249, 115, 22, 0.5);
+        }
+
+        @keyframes pulse-orange {
+            0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+        }
+        .pulse-marker {
+            animation: pulse-orange 2s infinite;
+        }
+        
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .hidden { display: none; }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4 md:p-8">
+<body class="min-h-screen flex items-center justify-center p-4">
 
-    <div id="app-container" class="max-w-4xl w-full bg-neutral-900 border border-neutral-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[700px]">
+    <div class="max-w-5xl w-full h-[750px] glass-panel rounded-[2rem] shadow-2xl flex flex-col md:flex-row overflow-hidden border border-neutral-800">
         
-        <!-- Sidebar -->
-        <div class="w-full md:w-72 bg-neutral-950/50 border-r border-neutral-800 p-6 flex flex-col justify-between">
+        <!-- Sidebar Navigation -->
+        <div class="w-full md:w-80 bg-black/40 border-r border-neutral-800 p-8 flex flex-col justify-between">
             <div>
-                <div class="flex items-center gap-3 mb-8">
-                    <div class="bg-orange-500/20 p-2 rounded-xl text-orange-500">
-                        <i data-lucide="compass" class="w-6 h-6"></i>
+                <div class="flex items-center gap-4 mb-12">
+                    <div class="bg-orange-500/10 p-3 rounded-2xl border border-orange-500/20">
+                        <i data-lucide="compass" class="w-8 h-8 text-orange-500"></i>
                     </div>
                     <div>
-                        <h1 class="text-lg font-bold tracking-tight uppercase leading-none mb-1">Navigation</h1>
-                        <p class="text-[10px] text-neutral-500 font-mono">PATHFINDER v4.2</p>
+                        <h1 class="text-xl font-black tracking-tighter uppercase leading-none text-white">Pathfinder</h1>
+                        <p class="text-[10px] font-mono text-neutral-500 mt-1 uppercase tracking-widest">Navigation Deck v4.2</p>
                     </div>
                 </div>
 
-                <nav class="space-y-6" id="nav-steps">
-                    <div class="flex items-center gap-3 step-item active" data-step="1">
-                        <div class="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]"></div>
-                        <span class="text-xs font-bold uppercase tracking-widest text-white">Scanning Grid</span>
+                <div class="space-y-8" id="nav-indicators">
+                    <div class="flex items-center gap-4 group" id="ind-1">
+                        <div class="w-2.5 h-2.5 rounded-full bg-orange-500 pulse-marker"></div>
+                        <span class="text-xs font-bold uppercase tracking-widest text-white transition-colors">Scanning Grid</span>
                     </div>
-                    <div class="flex items-center gap-3 step-item opacity-30" data-step="2">
-                        <div class="w-2 h-2 rounded-full bg-neutral-800"></div>
-                        <span class="text-xs font-bold uppercase tracking-widest text-neutral-600">Topic Vectors</span>
+                    <div class="flex items-center gap-4 opacity-30" id="ind-2">
+                        <div class="w-2.5 h-2.5 rounded-full bg-neutral-700"></div>
+                        <span class="text-xs font-bold uppercase tracking-widest text-neutral-500">Topic Vectors</span>
                     </div>
-                    <div class="flex items-center gap-3 step-item opacity-30" data-step="3">
-                        <div class="w-2 h-2 rounded-full bg-neutral-800"></div>
-                        <span class="text-xs font-bold uppercase tracking-widest text-neutral-600">Calibration</span>
+                    <div class="flex items-center gap-4 opacity-30" id="ind-3">
+                        <div class="w-2.5 h-2.5 rounded-full bg-neutral-700"></div>
+                        <span class="text-xs font-bold uppercase tracking-widest text-neutral-500">Calibration</span>
                     </div>
-                </nav>
+                </div>
             </div>
 
-            <div class="space-y-4">
-                <div class="p-4 bg-neutral-900 border border-neutral-800 rounded-2xl">
-                    <div class="flex items-center gap-2 mb-2 text-[10px] uppercase font-bold text-neutral-400">
+            <div class="space-y-6">
+                <div class="p-5 bg-neutral-900/50 border border-neutral-800 rounded-2xl">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-[10px] font-black uppercase text-neutral-500 tracking-tighter">Core Telemetry</span>
                         <i data-lucide="activity" class="w-3 h-3 text-orange-500"></i>
-                        System Status
                     </div>
-                    <div class="h-1 w-full bg-neutral-800 rounded-full overflow-hidden">
-                        <div id="progress-bar" class="h-full bg-orange-500 transition-all duration-1000" style="width: 33%;"></div>
+                    <div class="h-1.5 w-full bg-neutral-800 rounded-full overflow-hidden">
+                        <div id="progress-bar" class="h-full bg-orange-500 transition-all duration-700" style="width: 33%"></div>
+                    </div>
+                    <div class="flex justify-between mt-3 text-[9px] font-mono text-neutral-600">
+                        <span>LAT: 21.26N</span>
+                        <span>LONG: 9.21W</span>
                     </div>
                 </div>
-                <div class="text-[10px] text-neutral-600 font-mono text-center">COORD: 21.26N / 9.21W</div>
             </div>
         </div>
 
-        <!-- Content -->
-        <div class="flex-1 flex flex-col overflow-hidden relative">
-            <div id="step-content" class="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                <!-- Step 1 View -->
-                <div id="view-1" class="space-y-8">
-                    <div class="space-y-2">
-                        <h2 class="text-3xl font-bold text-white">Select Search Grid</h2>
-                        <p class="text-neutral-400">Choose your data source and define your curiosity lens.</p>
+        <!-- Primary Display Area -->
+        <div class="flex-1 flex flex-col bg-neutral-900/20 relative">
+            
+            <div id="display-content" class="flex-1 overflow-y-auto p-10">
+                
+                <!-- Screen 1: Scan Source -->
+                <div id="screen-1" class="fade-in space-y-8">
+                    <div class="max-w-md">
+                        <h2 class="text-4xl font-black text-white leading-tight">Select your search grid.</h2>
+                        <p class="text-neutral-400 mt-2">Initialize the navigator by selecting a primary text source.</p>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-3" id="chapter-list">
-                        <!-- JS injects chapters -->
+                    <div class="grid grid-cols-1 gap-4" id="source-grid">
+                        <button onclick="selectSource('ch2', this)" class="source-card text-left p-6 rounded-3xl border border-neutral-800 bg-neutral-900/40 hover:border-neutral-600 transition-all flex items-center justify-between group">
+                            <div>
+                                <h3 class="text-lg font-bold text-white group-hover:text-orange-500 transition-colors">Chapter 2: Physics of the Crash</h3>
+                                <p class="text-sm text-neutral-500">Ecological Overshoot & The Industrial Titanic.</p>
+                            </div>
+                            <i data-lucide="arrow-right" class="w-5 h-5 text-neutral-700 group-hover:text-orange-500"></i>
+                        </button>
+                        <button onclick="selectSource('ch3', this)" class="source-card text-left p-6 rounded-3xl border border-neutral-800 bg-neutral-900/40 hover:border-neutral-600 transition-all flex items-center justify-between group">
+                            <div>
+                                <h3 class="text-lg font-bold text-white group-hover:text-orange-500 transition-colors">Chapter 3: Emotional Compass</h3>
+                                <p class="text-sm text-neutral-500">Processing Solastalgia and Finding Active Hope.</p>
+                            </div>
+                            <i data-lucide="arrow-right" class="w-5 h-5 text-neutral-700 group-hover:text-orange-500"></i>
+                        </button>
+                        <button onclick="selectSource('ml42', this)" class="source-card text-left p-6 rounded-3xl border border-neutral-800 bg-neutral-900/40 hover:border-neutral-600 transition-all flex items-center justify-between group">
+                            <div>
+                                <h3 class="text-lg font-bold text-white group-hover:text-orange-500 transition-colors">Media Lab: Video Transcript #42</h3>
+                                <p class="text-sm text-neutral-500">The Jevons Paradox in our own Neighborhood.</p>
+                            </div>
+                            <i data-lucide="arrow-right" class="w-5 h-5 text-neutral-700 group-hover:text-orange-500"></i>
+                        </button>
                     </div>
 
                     <div class="space-y-3">
-                        <label class="text-xs font-bold uppercase tracking-widest text-neutral-500 flex items-center gap-2">
-                            <i data-lucide="message-square" class="w-3 h-3"></i>
-                            Focus Curiosity (Optional)
+                        <label class="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-600 flex items-center gap-2">
+                            <i data-lucide="message-circle" class="w-3 h-3"></i> Focus Curiosity (Optional)
                         </label>
-                        <textarea id="curiosity-query" placeholder="e.g., How does this relate to local gardening?" class="w-full bg-neutral-950 border border-neutral-800 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors resize-none h-24"></textarea>
+                        <textarea id="query" placeholder="e.g., How does this relate to local gardening?" class="w-full bg-black/40 border border-neutral-800 rounded-2xl p-5 text-sm text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all resize-none h-28"></textarea>
                     </div>
                 </div>
 
-                <!-- Step 2 View (Hidden) -->
-                <div id="view-2" class="space-y-6 hidden">
-                    <div class="space-y-1">
-                        <h2 class="text-3xl font-bold text-white">Tactical Paths</h2>
-                        <p class="text-neutral-400">Five vectors identified based on your curiosity.</p>
+                <!-- Screen 2: Topics -->
+                <div id="screen-2" class="hidden fade-in space-y-8">
+                    <div class="max-w-md">
+                        <h2 class="text-4xl font-black text-white leading-tight">Tactical Paths</h2>
+                        <p class="text-neutral-400 mt-2">The AI has identified five vectors for your journey.</p>
                     </div>
-                    <div class="space-y-3" id="topic-list">
-                        <!-- JS injects topics -->
+
+                    <div class="grid grid-cols-1 gap-3" id="topic-grid">
+                        <!-- JS renders topics here -->
                     </div>
                 </div>
 
-                <!-- Step 3 View (Hidden) -->
-                <div id="view-3" class="space-y-8 flex flex-col items-center hidden">
-                    <div class="text-center space-y-2">
-                        <div class="inline-block p-4 bg-orange-500/10 rounded-full mb-2">
-                            <i data-lucide="settings" class="text-orange-500 w-12 h-12 animate-spin-slow"></i>
-                        </div>
-                        <h2 class="text-3xl font-bold text-white">Calibration</h2>
-                        <p class="text-neutral-400">Set the complexity for the Chapter Teacher.</p>
+                <!-- Screen 3: Calibration -->
+                <div id="screen-3" class="hidden fade-in flex flex-col items-center py-6 text-center">
+                    <div class="bg-orange-500/10 p-6 rounded-full border border-orange-500/20 mb-8">
+                        <i data-lucide="settings" class="w-16 h-16 text-orange-500 animate-spin-slow"></i>
                     </div>
+                    <h2 class="text-4xl font-black text-white mb-4 uppercase tracking-tighter">Calibrate Literacy</h2>
+                    <p class="text-neutral-400 mb-12 max-w-sm">Determine the mechanical depth for the Chapter Teacher's logic engine.</p>
 
-                    <div class="w-full max-w-sm space-y-8">
-                        <div class="space-y-4">
-                            <input type="range" id="literacy-slider" class="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-orange-500" min="0" max="100" value="50">
-                            <div class="flex justify-between text-[9px] uppercase tracking-tighter text-neutral-500 font-black">
-                                <span>Diagnostic</span><span>Shop Floor</span><span>Manual</span>
+                    <div class="w-full max-w-md space-y-10">
+                        <div class="px-4">
+                            <input type="range" id="literacy-slider" min="0" max="100" value="50" oninput="updateCalibration(this.value)">
+                            <div class="flex justify-between mt-4 text-[10px] font-black uppercase text-neutral-600 tracking-widest">
+                                <span>Diagnostic</span>
+                                <span>Shop Floor</span>
+                                <span>Manual</span>
                             </div>
                         </div>
 
-                        <div class="bg-neutral-950 border border-neutral-800 p-6 rounded-3xl text-center shadow-inner">
-                            <span class="text-orange-500 font-black uppercase text-[10px] tracking-widest block mb-2">Target Depth</span>
-                            <h3 id="literacy-label" class="text-2xl font-bold mb-3 text-white">Intermediate</h3>
-                            <div class="h-px w-12 bg-neutral-800 mx-auto mb-3"></div>
-                            <p id="literacy-desc" class="text-xs text-neutral-400 leading-relaxed italic">Standard mechanical shop analogies with practical application focus.</p>
+                        <div class="bg-black/60 border border-neutral-800 p-8 rounded-[2.5rem] shadow-inner">
+                            <span class="text-orange-500 font-black uppercase text-[10px] tracking-[0.3em] block mb-4">Targeting Instruction Mode</span>
+                            <h3 id="cal-label" class="text-3xl font-black text-white uppercase tracking-tighter">Intermediate</h3>
+                            <div class="h-px w-16 bg-neutral-800 mx-auto my-6"></div>
+                            <p id="cal-desc" class="text-sm text-neutral-500 leading-relaxed italic italic leading-relaxed">
+                                Standard mechanical shop analogies with focus on practical regional application.
+                            </p>
                         </div>
                     </div>
                 </div>
+
             </div>
 
-            <!-- Footer -->
-            <div class="p-6 bg-neutral-900 border-t border-neutral-800" id="footer-actions">
-                <button id="btn-next" class="w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-3 bg-orange-500 hover:bg-orange-600 text-white shadow-lg transition-all">
-                    <span>Initialize Navigator</span>
-                    <i data-lucide="search" class="w-5 h-5"></i>
+            <!-- Footer Navigation Controls -->
+            <div class="p-8 border-t border-neutral-800 bg-black/20 flex gap-4">
+                <button id="btn-back" onclick="goBack()" class="hidden px-8 py-5 rounded-2xl bg-neutral-900 text-neutral-400 font-bold hover:bg-neutral-800 transition-all border border-neutral-800">
+                    Back
                 </button>
-                <div id="multi-buttons" class="hidden flex gap-3">
-                    <button id="btn-back" class="px-6 py-4 rounded-2xl font-bold text-white bg-neutral-800 hover:bg-neutral-700">Back</button>
-                    <button id="btn-confirm" class="flex-1 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white">Confirm Path <i data-lucide="arrow-right" class="w-5 h-5"></i></button>
-                </div>
+                <button id="btn-main" onclick="handleMainAction()" class="flex-1 py-5 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl font-black text-lg shadow-[0_10px_20px_rgba(249,115,22,0.2)] transition-all flex items-center justify-center gap-3 uppercase tracking-tighter">
+                    <span id="btn-text">Initialize Navigator</span>
+                    <i data-lucide="play" class="w-6 h-6" id="btn-icon"></i>
+                </button>
             </div>
+
         </div>
     </div>
 
     <script>
-        const chapters = [
-            { id: "ch2", title: "Chapter 2: The Physics of the Crash", desc: "Ecological Overshoot and the Titanic." },
-            { id: "ch3", title: "Chapter 3: The Emotional Compass", desc: "Navigating Solastalgia and Active Hope." },
-            { id: "ch4", title: "Chapter 4: Launching the Lifeboats", desc: "From Global Systems to Local Resilience." }
-        ];
-
         const topics = [
-            { id: 1, title: "Thermodynamics", icon: "zap", summary: "The laws of entropy and why the 'Engine' is overheating." },
-            { id: 2, title: "Economic Overshoot", icon: "database", summary: "Living off the earth's principal instead of the interest." },
-            { id: 3, title: "The Jevons Paradox", icon: "activity", summary: "Why 'Efficiency' often accelerates the sinking ship." },
-            { id: 4, title: "Energy Descent", icon: "wind", summary: "The inevitable transition to a higher-resilience world." },
-            { id: 5, title: "Lifeboat Logic", icon: "anchor", summary: "Shifting from 'The Big Fix' to local tools." }
+            { id: 1, title: "Thermodynamics", icon: "zap", desc: "The laws of entropy and why the 'Engine' is overheating." },
+            { id: 2, title: "Economic Overshoot", icon: "database", desc: "Living off the Earth's principal instead of the interest." },
+            { id: 3, title: "The Jevons Paradox", icon: "activity", desc: "Why 'Efficiency' often accelerates the sinking of the ship." },
+            { id: 4, title: "Energy Descent", icon: "wind", desc: "The inevitable transition to a lower-energy world." },
+            { id: 5, title: "Lifeboat Logic", icon: "anchor", desc: "Shifting from 'The Big Fix' to local, repairable tools." }
         ];
 
-        let currentStep = 1;
-        let selectedChapter = "";
-        let selectedTopicId = null;
-
-        function init() {
-            lucide.createIcons();
-            renderChapters();
-            
-            document.getElementById('btn-next').onclick = handleNext;
-            document.getElementById('btn-back').onclick = handleBack;
-            document.getElementById('btn-confirm').onclick = handleConfirm;
-            document.getElementById('literacy-slider').oninput = updateLiteracy;
-        }
-
-        function renderChapters() {
-            const list = document.getElementById('chapter-list');
-            list.innerHTML = chapters.map(ch => `
-                <button onclick="selectChapter('${ch.id}')" class="chapter-btn text-left p-4 rounded-2xl border border-neutral-800 bg-neutral-800/30 hover:border-neutral-700 transition-all flex items-center justify-between w-full" id="btn-${ch.id}">
-                    <div>
-                        <h3 class="font-bold text-white">${ch.title}</h3>
-                        <p class="text-xs text-neutral-500">${ch.desc}</p>
-                    </div>
-                </button>
-            `).join('');
-        }
-
-        window.selectChapter = (id) => {
-            selectedChapter = id;
-            document.querySelectorAll('.chapter-btn').forEach(b => b.classList.remove('border-orange-500', 'bg-orange-500/5'));
-            document.getElementById(`btn-${id}`).classList.add('border-orange-500', 'bg-orange-500/5');
+        let state = {
+            step: 1,
+            source: null,
+            topic: null,
+            literacy: 50
         };
 
+        function selectSource(id, element) {
+            state.source = id;
+            document.querySelectorAll('.source-card').forEach(el => el.classList.remove('border-orange-500', 'bg-orange-500/5', 'shadow-lg'));
+            element.classList.add('border-orange-500', 'bg-orange-500/5', 'shadow-lg');
+            lucide.createIcons();
+        }
+
+        function selectTopic(id, element) {
+            state.topic = id;
+            document.querySelectorAll('.topic-card').forEach(el => el.classList.remove('border-orange-500', 'bg-orange-500/5'));
+            element.classList.add('border-orange-500', 'bg-orange-500/5');
+        }
+
+        function handleMainAction() {
+            if (state.step === 1) {
+                if (!state.source) return showNotification("Select a source to begin scanning.");
+                
+                // Simulation of scanning
+                const btn = document.getElementById('btn-main');
+                btn.innerHTML = '<i data-lucide="loader-2" class="w-6 h-6 animate-spin"></i> SCANNING GRID...';
+                lucide.createIcons();
+                
+                setTimeout(() => {
+                    state.step = 2;
+                    renderStep();
+                }, 1800);
+            } else if (state.step === 2) {
+                if (!state.topic) return showNotification("Select a path to confirm.");
+                state.step = 3;
+                renderStep();
+            } else {
+                showNotification("Handoff Block Generated! Opening Engine Room...");
+            }
+        }
+
+        function goBack() {
+            if (state.step > 1) {
+                state.step--;
+                renderStep();
+            }
+        }
+
+        function renderStep() {
+            // Hide all screens
+            [1, 2, 3].forEach(s => document.getElementById(`screen-${s}`).classList.add('hidden'));
+            document.getElementById(`screen-${state.step}`).classList.remove('hidden');
+
+            // Update Indicators
+            [1, 2, 3].forEach(i => {
+                const ind = document.getElementById(`ind-${i}`);
+                if (i === state.step) {
+                    ind.classList.remove('opacity-30');
+                    ind.querySelector('div').classList.add('bg-orange-500', 'pulse-marker');
+                    ind.querySelector('span').classList.add('text-white');
+                } else {
+                    ind.classList.add('opacity-30');
+                    ind.querySelector('div').classList.remove('bg-orange-500', 'pulse-marker');
+                    ind.querySelector('span').classList.remove('text-white');
+                }
+            });
+
+            // Footer Update
+            const btnText = document.getElementById('btn-text');
+            const btnIcon = document.getElementById('btn-icon');
+            const backBtn = document.getElementById('btn-back');
+            const progress = document.getElementById('progress-bar');
+
+            progress.style.width = (state.step * 33.3) + "%";
+            backBtn.classList.toggle('hidden', state.step === 1);
+
+            if (state.step === 1) {
+                btnText.innerText = "Initialize Navigator";
+                btnIcon.setAttribute('data-lucide', 'play');
+            } else if (state.step === 2) {
+                renderTopics();
+                btnText.innerText = "Confirm Path";
+                btnIcon.setAttribute('data-lucide', 'check');
+            } else {
+                btnText.innerText = "Open Engine Room";
+                btnIcon.setAttribute('data-lucide', 'chevron-right');
+            }
+            
+            lucide.createIcons();
+        }
+
         function renderTopics() {
-            const list = document.getElementById('topic-list');
-            list.innerHTML = topics.map(t => `
-                <button onclick="selectTopic(${t.id})" class="topic-btn w-full text-left p-4 rounded-2xl border border-neutral-800 hover:border-neutral-700 transition-all flex items-center gap-4 bg-neutral-800/40" id="topic-${t.id}">
-                    <div class="p-3 rounded-xl bg-neutral-800 text-neutral-400">
-                        <i data-lucide="${t.icon}" class="w-5 h-5"></i>
+            const grid = document.getElementById('topic-grid');
+            grid.innerHTML = topics.map(t => `
+                <button onclick="selectTopic(${t.id}, this)" class="topic-card text-left p-5 rounded-2xl border border-neutral-800 bg-neutral-900/40 transition-all flex items-center gap-5 group">
+                    <div class="p-3 bg-neutral-800 rounded-xl group-hover:bg-orange-500 transition-all">
+                        <i data-lucide="${t.icon}" class="w-6 h-6 text-neutral-400 group-hover:text-white"></i>
                     </div>
                     <div class="flex-1">
                         <h3 class="font-bold text-white">${t.title}</h3>
-                        <p class="text-xs text-neutral-500">${t.summary}</p>
+                        <p class="text-xs text-neutral-500">${t.desc}</p>
                     </div>
                 </button>
             `).join('');
             lucide.createIcons();
         }
 
-        window.selectTopic = (id) => {
-            selectedTopicId = id;
-            document.querySelectorAll('.topic-btn').forEach(b => b.classList.remove('bg-orange-500/10', 'border-orange-500'));
-            document.getElementById(`topic-${id}`).classList.add('bg-orange-500/10', 'border-orange-500');
-        };
-
-        function handleNext() {
-            if (!selectedChapter && currentStep === 1) return;
-            
-            const btn = document.getElementById('btn-next');
-            const originalHtml = btn.innerHTML;
-            btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin text-white"></i> <span>Scanning...</span>`;
-            lucide.createIcons();
-
-            setTimeout(() => {
-                currentStep = 2;
-                updateStepUI();
-                renderTopics();
-            }, 1500);
-        }
-
-        function handleBack() {
-            currentStep--;
-            updateStepUI();
-        }
-
-        function handleConfirm() {
-            if (currentStep === 2) {
-                if (!selectedTopicId) return;
-                currentStep = 3;
-                updateStepUI();
-            } else {
-                alert("Handoff Block Generated! Entering Engine Room...");
-            }
-        }
-
-        function updateStepUI() {
-            // Views
-            document.getElementById('view-1').classList.toggle('hidden', currentStep !== 1);
-            document.getElementById('view-2').classList.toggle('hidden', currentStep !== 2);
-            document.getElementById('view-3').classList.toggle('hidden', currentStep !== 3);
-            
-            // Sidebar
-            document.querySelectorAll('.step-item').forEach((item, i) => {
-                item.classList.toggle('opacity-30', i + 1 !== currentStep);
-                item.classList.toggle('active', i + 1 === currentStep);
-            });
-            
-            document.getElementById('progress-bar').style.width = (currentStep * 33.3) + "%";
-
-            // Footer
-            document.getElementById('btn-next').classList.toggle('hidden', currentStep !== 1);
-            document.getElementById('multi-buttons').classList.toggle('hidden', currentStep === 1);
-            
-            if (currentStep === 3) {
-                document.getElementById('btn-confirm').innerHTML = `Open Engine Room <i data-lucide="chevron-right" class="w-6 h-6 ml-2"></i>`;
-            } else {
-                document.getElementById('btn-confirm').innerHTML = `Confirm Path <i data-lucide="arrow-right" class="w-5 h-5"></i>`;
-            }
-            lucide.createIcons();
-        }
-
-        function updateLiteracy() {
-            const val = document.getElementById('literacy-slider').value;
-            const label = document.getElementById('literacy-label');
-            const desc = document.getElementById('literacy-desc');
+        function updateCalibration(val) {
+            const label = document.getElementById('cal-label');
+            const desc = document.getElementById('cal-desc');
             
             if (val < 33) {
-                label.innerText = "Beginner (Diagnostic)";
-                desc.innerText = "Everyday household metaphors and simple, core definitions.";
+                label.innerText = "Beginner";
+                desc.innerText = "Everyday household metaphors and simple, core definitions for the metacrisis.";
             } else if (val < 66) {
-                label.innerText = "Intermediate (Shop Floor)";
-                desc.innerText = "Standard mechanical shop analogies with practical application focus.";
+                label.innerText = "Intermediate";
+                desc.innerText = "Standard mechanical shop analogies with focus on practical regional application.";
             } else {
-                label.innerText = "Advanced (Shop Manual)";
-                desc.innerText = "Precise thermodynamic terms and exploration of technical tensions.";
+                label.innerText = "Advanced";
+                desc.innerText = "Precise thermodynamic terms and exploration of technical tensions in overshoot.";
             }
         }
 
-        window.onload = init;
+        function showNotification(msg) {
+            const div = document.createElement('div');
+            div.className = 'fixed bottom-8 right-8 bg-neutral-800 border border-neutral-700 p-4 rounded-xl shadow-2xl text-xs font-bold uppercase tracking-widest text-orange-500 fade-in z-50';
+            div.innerText = msg;
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+
+        // Initialize icons
+        lucide.createIcons();
     </script>
 </body>
 </html>
